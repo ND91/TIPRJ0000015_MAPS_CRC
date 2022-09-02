@@ -1,0 +1,332 @@
+---
+title: "Differential Analyses"
+author: "Andrew Y.F. Li Yim"
+date: "5/4/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages}
+library(Seurat)
+library(ggplot2)
+library(ggrastr)
+library(dplyr)
+library(muscat)
+library(DESeq2)
+library(openxlsx)
+library(NDlib)
+```
+
+```{r setup, include = F}
+outputDir <- file.path("output", "220129")
+dir.create(outputDir)
+
+rdssubsetDir <- file.path("data", "rds")
+
+rdsdeDir <- file.path(outputDir, "rds", "de")
+dir.create(rdsdeDir, recursive = T)
+deaDir <- file.path(outputDir, "dea")
+dir.create(deaDir, recursive = T)
+deDir <- file.path(deaDir, "de")
+dir.create(deDir)
+
+maps_crc <- readRDS(file.path(rdssubsetDir, "maps_hs_clean_crc.Rds"))
+
+maps_crc@meta.data <- maps_crc@meta.data %>%
+  dplyr::mutate(Metastasis_coded = ifelse(Metastasis == "PM+", "PMp", "PMn"),
+                Group_coded = gsub("\\+", "p", Group),
+                Group_coded = gsub("\\-", "n", Group_coded))
+```
+
+```{r pseudobulk metadata}
+sample_metadata <- data.frame(unique(maps_crc@meta.data[,c("orig.ident", "Age", "Sex", "Group", "Tissue", "Metastasis", "Donor")]), row.names = unique(maps_crc@meta.data$orig.ident)) %>%
+  dplyr::mutate(Metastasis_coded = ifelse(Metastasis == "PM+", "PMp", "PMn"),
+                Type = gsub("(\\+|\\-)$", "", Group),
+                Group_coded = gsub("\\+$", "p", Group),
+                Group_coded = gsub("\\-$", "n", Group_coded),
+                TX = ifelse(Tissue == "TX", "TX", "nonTX"))
+```
+
+# Tissue
+
+```{r tissue comparisons setup}
+tissue_comparisons <- c("PFvPBMC", "TXvPBMC", "TXvPBMC_paired", "TXvPF", "TXvPF_paired")
+```
+
+```{r tissue de analysis}
+for(comparison in tissue_comparisons){
+  compDir <- file.path(deDir, comparison)
+  dir.create(compDir)
+  
+  # Calculating DEGs
+  
+  contrastform <- case_when(
+    comparison == "PFvPBMC" ~ c("Tissue", "PF", "PBMC"),
+    comparison %in% c("TXvPBMC", "TXvPBMC_paired") ~ c("Tissue", "PF", "PBMC"),
+    comparison %in% c("TXvPF", "TXvPF_paired") ~ c("Tissue", "TX", "PF"),
+    comparison %in% c("TXvRest_paired") ~c("TX", "TX", "nonTX")
+  )
+  
+  if(comparison %in% c("TXvPBMC_paired", "TXvPF_paired", "TXvRest_paired")){
+    tissue_list <- NDlib::seuratDE(seuratobj = maps_crc[,maps_crc@meta.data$Donor %in% sample_metadata[sample_metadata$Tissue == "TX", "Donor"]], 
+                                   cellsampleID = "orig.ident", 
+                                   cellclusterID = "celltype_l3", 
+                                   sampleinfo = sample_metadata[sample_metadata$Donor %in% sample_metadata[sample_metadata$Tissue == "TX", "Donor"],], 
+                                   design = "~Tissue+Sex+Age", 
+                                   contrast = contrastform)
+  } else{
+    tissue_list <- NDlib::seuratDE(seuratobj = maps_crc, 
+                                   cellsampleID = "orig.ident", 
+                                   cellclusterID = "celltype_l3", 
+                                   sampleinfo = sample_metadata, 
+                                   design = "~Tissue+Sex+Age", 
+                                   contrast = contrastform)
+  }
+  
+  tissue_list <- tissue_list[lengths(tissue_list) != 0]
+  
+  tissue_tables <- lapply(tissue_list, function(deobj){
+    data.frame(deobj$degs)
+  })
+  
+  # Saving data  
+  openxlsx::write.xlsx(tissue_tables, file.path(compDir, paste0(comparison, "_l3_degs.xlsx")), row.names = T, overwrite = T)
+  saveRDS(tissue_list, file.path(rdsdeDir, paste0(comparison, "_l3_degs.Rds"))) 
+}
+```
+
+```{r tissue de visualization}
+for(comparison in tissue_comparisons){
+  
+  tissue_list <- readRDS(file.path(rdsdeDir, paste0(comparison, ".Rds")))
+  tissue_list <- tissue_list[lengths(tissue_list) != 0]
+  
+  compDir <- file.path(deDir, comparison)
+  dir.create(compDir)
+  
+  for(set in 1:length(tissue_list)){
+    
+    setDir <- file.path(compDir, names(tissue_list)[set])
+    dir.create(setDir)
+    
+    tryCatch({
+      cellaggdonorplotDir <- file.path(setDir, "aggregated_donor")
+      dir.create(cellaggdonorplotDir)
+      
+      cellsepdonorplotDir <- file.path(setDir, "separated_donor")
+      dir.create(cellsepdonorplotDir)
+      
+      # Volcanoplot
+      Cairo::Cairo(width = 800, height = 800, type = "png", file = file.path(setDir, "volcanoplot.png"), bg = "white", units = "px", dpi = 120)
+      print(volcanoplot(tissue_list[[set]]$degs, alpha = 0.05, topnames = 10))
+      dev.off()
+      
+      counts_df <- assay(rlog(tissue_list[[set]]$dds))
+      factor_of_interest <- colData(tissue_list[[set]]$dds)$Tissue
+      
+      # Significant DEGs
+      
+      #degs_sig <- tissue_list[[set]]$degs[tissue_list[[set]]$degs$padj<0.05,] #All significant hits
+      degs_sig <- tissue_list[[set]]$degs[1:100,] #Top 100
+      if(nrow(degs_sig) == 0) next(paste0(set, " has no significant DEGs"))
+      
+      for(j in 1:nrow(degs_sig)){
+        tryCatch({
+          # Per aggregated patient
+          
+          Cairo::Cairo(width = 500, height = 500, type = "png", file = file.path(cellaggdonorplotDir, paste0(j, "_", rownames(tissue_list[[set]]$degs)[j], ".png")), bg = "white", units = "px", dpi = 120)
+          print(NDlib::transcriptStripPlot(id = rownames(tissue_list[[set]]$degs)[j], 
+                                           counts = counts_df, 
+                                           factor_interest = factor_of_interest) +
+                  labs(title = rownames(tissue_list[[set]]$degs)[j]))
+          dev.off()
+          
+          # Per individual cell per patient
+          
+          Cairo::Cairo(width = 2000, height = 500, type = "png", file = file.path(cellsepdonorplotDir, paste0(j, "_", rownames(tissue_list[[set]]$degs)[j], ".png")), bg = "white", units = "px", dpi = 120)
+          print(NDlib::seuratStratPlot(seuratObj = maps_crc[,maps_crc@meta.data$celltype_l3 %in% names(tissue_list)[set]], 
+                                       assay = "RNA", 
+                                       feature = rownames(tissue_list[[set]]$degs)[j], 
+                                       donor = "Donor", 
+                                       group = "Tissue") +
+                  labs(title = rownames(tissue_list[[set]]$degs)[j])) 
+          dev.off()
+        }, error = function(e){
+          graphics.off()
+          cat("Failed on ", set, " top gene:", j, " Error: ",conditionMessage(e), "\n")
+        })
+      }
+    }, error = function(e){
+      cat("Failed on ", set, " Error: ",conditionMessage(e), "\n")
+    })
+  }
+}
+```
+
+# Metastasis
+
+```{r metastasis comparisons setup}
+metastasis_comparisons <- c("PM+vPM-")
+```
+
+```{r metastasis de analysis}
+for(comparison in metastasis_comparisons){
+  compDir <- file.path(deDir, comparison)
+  dir.create(compDir)
+  
+  designform <- dplyr::case_when(
+    comparison %in% c("GCvCRC", "PM+vPM-") ~ "Metastasis_coded",
+    comparison %in% c("GC-vCRC-", "CRC+vCRC-", "GC+vGC-") ~ "Group_coded",
+    comparison %in% c("PM+vPM-vGCvCRC") ~ "Type+Metastasis_coded+Type:Metastasis_coded"
+  )
+  
+  contrastform <- dplyr::case_when(
+    comparison == "GC-vCRC-" ~ c("Group_coded", "GCn", "CRCn"),
+    comparison == "CRC+vCRC-" ~ c("Group_coded", "CRCp", "CRCn"),
+    comparison == "GC+vGC-" ~ c("Group_coded", "GCp", "GCn"),
+    comparison == "PM+vPM-" ~ c("Metastasis_coded", "PMp", "PMn"),
+    comparison == "GCvCRC" ~ c("Type", "GC", "CRC"),
+  )
+  if(all(is.na(contrastform))) contrastform <- NULL
+  
+  for(tissue in c("PF", "PBMC")){
+    compTissueDir <- file.path(compDir, tissue)
+    dir.create(compTissueDir)
+    
+    maps_tissue <- maps_crc[,maps_crc@meta.data$Tissue == tissue]
+    sample_metadata_tissue <- sample_metadata[sample_metadata$Tissue == tissue,]
+    
+    if(!is.null(contrastform)){
+      metastasis_list <- NDlib::seuratDE(seuratobj = maps_tissue, 
+                                         cellsampleID = "orig.ident", 
+                                         cellclusterID = "celltype_l3", 
+                                         sampleinfo = sample_metadata_tissue, 
+                                         design = paste0("~", designform, "+Sex+Age"), 
+                                         contrast = contrastform)
+    } else{
+      metastasis_list <- NDlib::seuratDE(seuratobj = maps_tissue, 
+                                         cellsampleID = "orig.ident", 
+                                         cellclusterID = "celltype_l3", 
+                                         sampleinfo = sample_metadata_tissue, 
+                                         design = paste0("~", designform, "+Sex+Age"), 
+                                         name = "TypeGC.Metastasis_codedPMp")
+    }
+    
+    metastasis_tables <- lapply(metastasis_list, function(deobj){
+      data.frame(deobj$degs)
+    })
+    
+    openxlsx::write.xlsx(metastasis_tables, file.path(compTissueDir, paste0(comparison, "_", tissue, "_l3_degs.xlsx")), row.names = T, overwrite = T)
+    saveRDS(metastasis_list, file.path(rdsdeDir, paste0(comparison, "_", tissue, "_l3_degs.Rds"))) 
+  }
+}
+```
+
+# Visualization
+
+```{r de visualization}
+for(comparison in metastasis_comparisons){
+  for(tissue in c("PF", "PBMC")){
+    metastasis_list <- readRDS(file.path(rdsdeDir, paste0(comparison, "_", tissue, "_l3_degs.Rds")))
+    metastasis_list <- metastasis_list[lengths(metastasis_list) != 0]
+    
+    compDir <- file.path(deDir, comparison)
+    dir.create(compDir)
+    
+    if(comparison %in% "PM+vPM-vGCvCRC"){
+      gcpvgcn_list <- readRDS(file.path(rdsdeDir, paste0("GC+vGC-_", tissue, "_l3_degs.Rds")))
+      crcpvcrcn_list <- readRDS(file.path(rdsdeDir, paste0("CRC+vCRC-_", tissue, "_l3_degs.Rds")))
+    }
+    
+    for(set in 1:length(metastasis_list)){
+      setDir <- file.path(compDir, tissue, names(metastasis_list)[set])
+      dir.create(setDir)
+      
+      tryCatch({
+        cellaggdonorplotDir <- file.path(setDir, "aggregated_donor")
+        dir.create(cellaggdonorplotDir)
+        
+        cellsepdonorplotDir <- file.path(setDir, "separated_donor")
+        dir.create(cellsepdonorplotDir)
+        
+        # Volcanoplot
+        Cairo::Cairo(width = 800, height = 800, type = "png", file = file.path(setDir, "volcanoplot.png"), bg = "white", units = "px", dpi = 120)
+        print(volcanoplot(metastasis_list[[set]]$degs, alpha = 0.05, topnames = 10))
+        dev.off()
+        
+        counts_df <- assay(rlog(metastasis_list[[set]]$dds))
+        factor_of_interest <- colData(metastasis_list[[set]]$dds)$Group
+        strat <- colData(metastasis_list[[set]]$dds)$Tissue
+        
+        # 2x2 ES plot
+        if(comparison %in% "PM+vPM-vGCvCRC"){
+          Cairo::Cairo(width = 800, height = 800, type = "png", file = file.path(setDir, "ES2x2plot.png"), bg = "white", units = "px", dpi = 120)
+          print(data.frame(gcpvgcn_list[[set]]$degs) %>%
+                  dplyr::left_join(data.frame(crcpvcrcn_list[[set]]$degs), 
+                                   by = "gene",
+                                   suffix = c("_GC", "_CRC")) %>%
+                  dplyr::mutate(significance = case_when(
+                    padj_CRC <= 0.05 & padj_GC <= 0.05 ~ "CRC+ v CRC- & GC+ v GC-",
+                    padj_CRC <= 0.05 & padj_GC > 0.05 ~ "CRC+ v CRC-",
+                    padj_CRC > 0.05 & padj_GC <= 0.05 ~ "GC+ v GC-",
+                    padj_CRC > 0.05 & padj_GC > 0.05 ~ "NS",
+                  )) %>%
+                  ggplot(aes(x = stat_CRC, y = stat_GC, col = significance)) +
+                  geom_point_rast() +
+                  scale_color_manual(values = c(`CRC+ v CRC- & GC+ v GC-` = "#BA55D3",
+                                                `CRC+ v CRC-` = "#B22222",
+                                                `GC+ v GC-` = "#1E90FF",
+                                                NS = "#C0C0C0")) +
+                  theme_bw() +
+                  theme(panel.grid.major = element_blank(), 
+                        panel.grid.minor = element_blank(),
+                        legend.pos = "bottom"))
+          dev.off()
+        }
+        
+        # Significant DEGs
+        
+        #degs_sig <- metastasis_list[[set]]$degs[metastasis_list[[set]]$degs$padj<0.05,] #All significant hits
+        degs_sig <- metastasis_list[[set]]$degs[1:100,] #Top 100
+        if(nrow(degs_sig) == 0) next(paste0(set, " has no significant DEGs"))
+        
+        for(j in 1:nrow(degs_sig)){
+          tryCatch({
+            # Per aggregated patient
+            
+            Cairo::Cairo(width = 750, height = 500, type = "png", file = file.path(cellaggdonorplotDir, paste0(j, "_", rownames(metastasis_list[[set]]$degs)[j], ".png")), bg = "white", units = "px", dpi = 120)
+            # stratplot(id = rownames(metastasis_list[[set]]$degs)[j], 
+            #           counts = counts_df,
+            #           group_factor = colData(metastasis_list[[set]]$dds)$Type,
+            #           stratrow = colData(metastasis_list[[set]]$dds)$Tissue,
+            #           stratcol = colData(metastasis_list[[set]]$dds)$Metastasis)
+            print(NDlib::transcriptStripPlot(id = rownames(metastasis_list[[set]]$degs)[j],
+                                             counts = counts_df,
+                                             group = factor_of_interest,
+                                             strat = strat) +
+                    labs(title = rownames(metastasis_list[[set]]$degs)[j],
+                         y = bquote(log[2]("counts"))))
+            dev.off()
+            
+            # Per individual cell per patient
+            
+            Cairo::Cairo(width = 2000, height = 500, type = "png", file = file.path(cellsepdonorplotDir, paste0(j, "_", rownames(metastasis_list[[set]]$degs)[j], ".png")), bg = "white", units = "px", dpi = 120)
+            print(NDlib::seuratStratPlot(seuratObj = maps_crc[,maps_crc@meta.data$celltype_l3 %in% names(metastasis_list)[set] & maps_crc@meta.data$Tissue %in% tissue], 
+                                         assay = "RNA", 
+                                         feature = rownames(metastasis_list[[set]]$degs)[j], 
+                                         donor = "Donor", 
+                                         group = "Group") +
+                    labs(title = rownames(metastasis_list[[set]]$degs)[j])) 
+            dev.off()
+          }, error = function(e){
+            graphics.off()
+            cat("Failed on ", set, " top gene:", j, " Error: ",conditionMessage(e), "\n")
+          })
+        }
+      }, error = function(e){
+        cat("Failed on ", set, " Error: ",conditionMessage(e), "\n")
+      })
+    } 
+  }
+}

@@ -1,0 +1,27 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-seurat=4.1.1
+  - r-seuratdisk=0.0.9019
+  - r-openxlsx=4.2.3
+  - r-pheatmap=1.0.12
+  - r-uwot=0.1.10
+  - r-ggplot2=3.3.6
+  - r-data.table=1.14.2
+  - r-tibble=3.1.7
+  - r-stringr=1.4.0
+  - r-readxl=1.4.0
+  - r-ggally=2.1.2
+  - r-ggpubr=0.4.0
+  - r-cairo=1.6_0
+  - r-tidyr=1.2.0
+  - r-dplyr=1.0.9
+  - r-ggrepel=0.9.1
+  - r-ggrastr=1.0.1
+  - r-viridis=0.6.2
+  - r-rmarkdown=2.14
+  - r-ggrastr=1.0.1
+  - r-svglite=2.1.0

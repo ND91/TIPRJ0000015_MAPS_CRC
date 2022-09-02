@@ -1,0 +1,30 @@
+treg_annotations <- read.csv(file.path("tmp", "CD4tregs.csv"))
+
+FeaturePlot(CD4tregs, c("S100A4", "SELL"))
+FeaturePlot(CD4tregs, "S100A4", min.cutoff = 0.75)
+
+pheatmap::pheatmap(prop.table(table(CD4tregs@meta.data$SampleID, CD4tregs@meta.data$seurat_clusters), 2), display_numbers = T)
+
+
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% c(0, 3)] <- "CD4 Treg memory"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% 1] <- "CD4 Treg memory exhausted"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% c(2, 4)] <- "CD4 Treg memory RBMS3+"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% 5] <- "CD4 Treg memory IL7R+FOXP3-CTLA4-"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% 6] <- "Dead/Debris"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% 7] <- "Epithelial"
+CD4tregs@meta.data$manual_l4[CD4tregs@meta.data$seurat_clusters %in% c(0, 1, 2, 3, 4, 5, 6) & GetAssayData(CD4tregs)["S100A4",] < 1] <- "CD4 Treg naive"
+
+CD4tregs@meta.data$manual_l3 <- CD4tregs@meta.data$manual_l4
+CD4tregs@meta.data$manual_l3[CD4tregs@meta.data$manual_l3 %in% c("CD4 Treg memory", "CD4 Treg memory exhausted", "CD4 Treg memory RBMS3+", "CD4 Treg memory IL7R+FOXP3-CTLA4-", "CD4 Treg naive")] <- "CD4 Treg"
+
+CD4tregs@meta.data$manual_l2 <- CD4tregs@meta.data$manual_l3
+CD4tregs@meta.data$manual_l2[CD4tregs@meta.data$manual_l2 %in% c("CD4 Treg")] <- "CD4T"
+
+CD4tregs@meta.data$manual_l1 <- CD4tregs@meta.data$manual_l2
+CD4tregs@meta.data$manual_l1[CD4tregs@meta.data$manual_l1 %in% c("CD4T")] <- "T"
+
+DimPlot(CD4tregs,group.by = "manual_l4")
+
+pheatmap::pheatmap(prop.table(table(CD4tregs@meta.data$SampleID, CD4tregs@meta.data$manual_l4), 2), display_numbers = T)
+
+CD4tregs@meta.data

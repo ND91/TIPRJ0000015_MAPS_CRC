@@ -1,0 +1,236 @@
+---
+title: "curate Myeloid annotations"
+author: "Andrew Y.F. Li Yim"
+date: '2022-08-10'
+output: html_document
+---
+
+The goal of this script is to curate the B annotations lifted from the human PF atlas dataset. 
+
+```{r libraries, include=FALSE}
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(Cairo))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+```{r setup}
+merged_rds <- file.path("..", "..", "..", "output", "merged", "merged_SeuratObject.Rds")
+seurat_Myeloid_curated_rds <- file.path("..", "..", "..", "output", "split", "Myeloid_curated_SeuratObject.Rds")
+```
+
+## Preparation
+
+```{r data import and preparation, fig.width = 10, fig.heigh = 10}
+merged <- readRDS(merged_rds)
+
+seurat_Myeloid <- merged[,merged@meta.data$celltype_l1 == "Myeloid"]
+seurat_Myeloid <- seurat_Myeloid[Matrix::rowSums(seurat_Myeloid) != 0, ]
+
+seurat_Myeloid <- SCTransform(seurat_Myeloid, conserve.memory = T)
+seurat_Myeloid <- RunPCA(object = seurat_Myeloid, npcs = 100, seed.use = 67489123)
+
+ElbowPlot(object = seurat_Myeloid, ndims = 100)
+```
+
+A dimensionality of 45 seems reasonable.
+
+```{r dimensionality reduction, fig.width = 10, fig.height = 10}
+seurat_Myeloid <- FindNeighbors(seurat_Myeloid, reduction = "pca", dims = 1:42)
+seurat_Myeloid <- FindClusters(seurat_Myeloid, resolution = 0.5, verbose = FALSE)
+seurat_Myeloid <- RunUMAP(seurat_Myeloid, dims = 1:42)
+seurat_Myeloid@meta.data$subcluster <- paste0("Myeloid.", seurat_Myeloid@meta.data$seurat_clusters)
+Idents(seurat_Myeloid) <- "subcluster"
+
+DimPlot(seurat_Myeloid, group.by = "subcluster", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "Louvain clustering") +
+  theme(legend.pos = "bottom")
+```
+
+```{r clusters}
+table(seurat_Myeloid@meta.data$subcluster)
+```
+
+In total, we find 19 clusters.
+
+```{r celltype_l4, fig.height = 10, fig.width = 10}
+DimPlot(seurat_Myeloid, group.by = "celltype_l4", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "PF Atlas") +
+  theme(legend.pos = "bottom")
+```
+
+## Donor-specific clusters
+
+```{r donor specific umap, fig.width=10, fig.height=10}
+DimPlot(seurat_Myeloid, group.by = "SampleID", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "Donor") +
+  theme(legend.pos = "none")
+```
+
+```{r donor specific clusters heatmap, fig.width = 10, fig.height = 17.5}
+pheatmap::pheatmap(prop.table(table(seurat_Myeloid@meta.data$SampleID, seurat_Myeloid@meta.data$seurat_clusters), 
+                              margin = 2), 
+                   display_numbers = T)
+```
+
+From this observation, it appears that the following clusters might be sample-specific (>0.5 cells from one cluster derived from one donor):
+- Myeloid.15: pt37_PF
+
+## Dead/debris
+
+```{r dead debris umap, fig.width=20, fig.height=10}
+FeaturePlot(seurat_Myeloid, features = c("percent_MT", "nFeature_RNA"), raster = T, label = T)
+```
+
+```{r dead debris featurescatter, fig.width=10, fig.height=10}
+FeatureScatter(seurat_Myeloid, feature1 = "percent_MT", feature2 = "nFeature_RNA", raster = T) +
+  geom_hline(yintercept = 1500) +
+  geom_vline(xintercept = 30)
+```
+
+## Cycling cells
+
+```{r cycling cells umap, fig.width=10, fig.height=10}
+DimPlot(seurat_Myeloid, group.by = "Phase", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "Phase") +
+  theme(legend.pos = "bottom")
+```
+
+```{r cycling cells heatmap, fig.height=8, fig.width=3}
+pheatmap::pheatmap(prop.table(table(seurat_Myeloid@meta.data$seurat_clusters, seurat_Myeloid@meta.data$Phase), 
+                              margin = 1), 
+                   display_numbers = T)
+```
+
+No evident cycling cells present
+
+## Improper lineages
+
+```{r pf_atlas celltype_l4}
+table(seurat_Myeloid@meta.data$celltype_l4)
+```
+
+There appear to be few incorrect L4 cells that are not T cells, namely the NK proliferating and Plasmablasts.
+
+```{r}
+seurat_incorrect <- seurat_Myeloid[,seurat_Myeloid@meta.data$celltype_l4 %in% c("Plasmablasts", "NK proliferating")]
+
+GetAssayData(seurat_incorrect)[c("CD14", "CD163", "CLEC10A", "CD1C"),]
+```
+
+```{r}
+seurat_incorrect@meta.data
+```
+
+
+```{r, fig.width = 20, fig.height = 30}
+FeaturePlot(seurat_Myeloid, features = c("CD14", "FCGR3A", "CD163", "CLEC10A", "TCF4", "FCGR3B"), label = T)
+```
+
+
+```{r CD8 NKT, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Myeloid[,seurat_Myeloid@meta.data$subcluster %in% c("Myeloid.12")], c("CD3D", "MS4A1", "CD14", "FCGR3A"), label = T, ncol = 2)
+```
+
+```{r global umap markers, fig.width = 20, fig.height = 30}
+FeaturePlot(seurat_Myeloid[,seurat_Myeloid@meta.data$celltype_l4 %in% c("GDT")], c("CD3D", "CD4", "CD8A", "TRDC", "TRGC1"), label = T, ncol = 2)
+```
+
+```{r NK CD16m}
+DimPlot(seurat_Myeloid[,seurat_Myeloid@meta.data$celltype_l4 %in% c("NK CD16-", "NK CD16-XCL+")], group.by = "subcluster")
+```
+
+
+```{r global umap t markers, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Myeloid[,seurat_Myeloid@meta.data$celltype_l4 %in% c("NK CD16-", "NK CD16-XCL+")], c("GNLY", "NKG7", "FCGR3A", "XCL"), label = T, ncol = 2)
+```
+
+```{r CD4 MAIT, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Myeloid, features =  c("GNLY", "NKG7", "GZMB"), label = T)
+```
+
+```{r XCL expression, fig.width = 20, fig.height = 10}
+FeaturePlot(seurat_Myeloid, features =  c("LTF", "CD14"), label = T)
+```
+
+## Markers
+
+```{r marker genes, fig.width = 15, fig.height=15}
+marker_genes <- FindAllMarkers(seurat_Myeloid)
+marker_genes <- split(marker_genes, by = marker_genes$cluster)
+```
+
+```{r XCL expression, fig.width = 10, fig.height = 10}
+FeaturePlot(seurat_Myeloid, features =  c("PTGDS"), label = T)
+```
+
+```{r nkilc0, fig.width = 15, fig.height=15}
+Myeloid8 <- FindMarkers(seurat_Myeloid, "Myeloid.8")
+Myeloid9 <- FindMarkers(seurat_Myeloid, "Myeloid.9")
+```
+
+```{r, fig.width = 20, fig.height = 30}
+FeaturePlot(seurat_Myeloid, c("CD163","C1QC", "FN1", "ACTB", "SPP1", "VCAN"), label = T)
+```
+
+```{r, fig.width = 20, fig.height = 10}
+seurat_macrophages <- seurat_Myeloid[,seurat_Myeloid@meta.data$subcluster %in% c("Myeloid.8", "Myeloid.2", "Myeloid.3", "Myeloid.9")]
+
+DimPlot(seurat_macrophages, group.by = "celltype_l4") + DimPlot(seurat_macrophages, group.by = "subcluster")
+```
+
+```{r, fig.width = 20, fig.height = 30}
+VlnPlot(seurat_macrophages, features = c("CD163","C1QC", "FN1", "ACTB", "SPP1", "VCAN"), group.by = "celltype_l4", ncol = 2)
+```
+
+
+By and large, the annotations are congruent to their expression. There are some minor adjustments to be made. It appears that B.0, B.3, and B.8 are Pre-B based on their expression of CD9 and MME. I will likely need to do some gating on that.
+
+## Annotation
+
+```{r cycling cells annotate, fig.width=10, fig.height=10}
+seurat_Myeloid_anno <- seurat_Myeloid
+
+seurat_Myeloid_anno@meta.data <- seurat_Myeloid_anno@meta.data %>%
+  dplyr::mutate(cellID = rownames(.),
+                celltype_l4 = case_when(subcluster == "Myeloid.14" ~ "PDCs",
+                                        subcluster == "Myeloid.12" ~ "Multiplets",
+                                        subcluster == "Myeloid.18" ~ "Neutrophils LTF+",
+                                        cellID == "S20201030_SCS60_2_ATGGAGGAGCACTGGA-1" ~ "Macrophages C1Q+",
+                                        cellID == "S20201217_SCS69_2_CCCTTAGCATCGGAAG-1" ~ "Macrophages C1Q+",
+                                        cellID == "S20201217_SCS69_2_GATGAGGCATGTGACT-1" ~ "Classical monocytes",
+                                        cellID == "S20201217_SCS69_2_GATTTCTCACGTATAC-1" ~ "Dead/debris",
+                                        cellID == "S20220514_SCS123_2_CTCTGGTGTGAGTTTC-1" ~"CDC2s",
+                                        celltype_l4 == "Macrophages VCAN+CD163-" ~ "Macrophages VCAN+",
+                                        celltype_l4 == "Macrophages FN1+ACTB-" ~ "Macrophages FN1+",
+                                        celltype_l4 == "Classical monocytes LTF+" ~ "Neutrophils LTF+",
+                                        percent_MT>40 & nFeature_RNA<1500 ~ "Dead/debris",
+                                        TRUE ~ celltype_l4),
+                celltype_l3 = celltype_l4,
+                celltype_l3 = ifelse(celltype_l3 %in% c("Macrophages C1Q+", "Macrophages FN1+", "Macrophages FN1+ACTB-", "Macrophages FN1+ACTB+", "Macrophages SPP1+"), "M2-like", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("Macrophages VCAN+"), "M1-like", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("Neutrophils LTF+"), "Neutrophils", celltype_l3),
+                celltype_l2 = celltype_l3,
+                celltype_l2 = ifelse(celltype_l2 %in% c("CDC1s", "CDC2s"), "CDCs", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Classical monocytes", "Non-classical monocytes"), "Monocytes", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("M1-like", "M2-like", "Macrophages proliferating"), "Macrophages", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Platelet/monocytes multiplets"), "Multiplets", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Basophils", "Mast", "Neutrophils"), "Granulocytes", celltype_l2),
+                celltype_l1 = celltype_l2,
+                celltype_l1 = ifelse(celltype_l1 %in% c("CDCs", "DC proliferating", "Granulocytes", "Macrophages", "Monocytes", "PDCs", "Platelets"), "Myeloid", celltype_l1))
+
+DimPlot(seurat_Myeloid_anno, group.by = "celltype_l2", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "Celltype l4") +
+  theme(legend.pos = "bottom")
+```
+
+The aforementioned chunks (hopefully) provide context as to how we annotated the myeloid lineage. The being said, some steps rely on unsupervised clustering algorithms whose annotation is likely based on a random seed. I cannot ascertain that under different versions of R the clustering annotations remain the same. Accordingly, I have stored the annotations we made in a separate file (config/annotations).
+
+```{r sessionInfo}
+sessionInfo()
+```

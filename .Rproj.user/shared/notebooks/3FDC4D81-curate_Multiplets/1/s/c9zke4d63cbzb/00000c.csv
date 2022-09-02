@@ -1,0 +1,5 @@
+"0","FeaturePlot(seurat_Multiplets, c(""PTPRC"", ""CLEC10A"",""HLA-DPA1"",""CD1D"", ""ITGAX"", ""CLEC9A""), label = T, ncol = 2)
+"
+"2","Warning:"
+"2"," Could not find CLEC9A in the default search locations, found in RNA assay instead
+"

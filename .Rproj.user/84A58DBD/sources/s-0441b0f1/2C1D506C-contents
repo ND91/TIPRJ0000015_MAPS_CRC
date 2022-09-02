@@ -1,0 +1,198 @@
+suppressPackageStartupMessages(require(Seurat))
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(dplyr))
+suppressPackageStartupMessages(require(ggrastr))
+suppressPackageStartupMessages(require(ggrepel))
+suppressPackageStartupMessages(require(MAST))
+suppressPackageStartupMessages(require(ComplexHeatmap))
+suppressPackageStartupMessages(require(viridis))
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop(paste0("Script needs 1 arguments. Current input is:", args))
+}
+
+seurat_RDS_path <- args[1]
+l2_colors_df <- args[2]
+
+l2_colors_df$Number <- 1:nrow(l2_colors_df)
+l2_colors_df$Label <- paste0(l2_colors_df$Number, ". ", l2_colors_df$Celltype_l2)
+l2_colors <- l2_colors_df$Color
+names(l2_colors) <- l2_colors_df$Label
+
+seuratObject <- readRDS(seurat_RDS_path)
+
+umap_df <- data.frame(CB = colnames(seuratObject),
+                      Embeddings(seuratObject[["umap"]]),
+                      seuratObject@meta.data) %>%
+  dplyr::rename(UMAP_1 = WUMAP_1,
+                UMAP_2 = WUMAP_2) %>%
+  dplyr::mutate(celltype.l2 = factor(celltype.l2, levels = l2_colors_df$Celltype_l2),
+                celltype.l2_number = as.numeric(celltype.l2),
+                celltype.l2_w_number = paste0(as.numeric(celltype.l2), ". ", celltype.l2))
+
+# All
+
+Cairo::Cairo(width = 1500, height = 1500, type = "pdf", file = file.path("umap_hs_cd45p_live_singlet_spleen_pbmc.pdf"), bg = "white", units = "px", dpi = 120)
+print(ggplot(umap_df, aes(x = UMAP_1, y = UMAP_2, col = Tissue)) +
+        geom_point_rast(show.legend = T, size = 0.1) +
+        labs(y = "",
+             x = "") +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        labs(title = "CD45+ cells from spleen and PBMCs",
+             subtitle = "Source PBMCs: Hao et al. 2021 (DOI: 10.1016/j.cell.2021.04.048)") +
+        theme_minimal() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.pos = "bottom",
+              legend.title = element_blank(),
+              axis.title.x = element_blank(),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.y = element_blank()))
+dev.off()
+
+Cairo::Cairo(width = 2000, height = 1500, type = "pdf", file = file.path("umap_hs_cd45p_live_singlet_spleen_pbmc_facetted.pdf"), bg = "white", units = "px", dpi = 120)
+print(ggplot(umap_df, aes(x = UMAP_1, y = UMAP_2, col = celltype.l2_w_number)) +
+        geom_point_rast(show.legend = T, size = 0.1) +
+        labs(y = "",
+             x = "") +
+        geom_label_repel(data = umap_df %>%
+                           dplyr::group_by(celltype.l2_number, celltype.l2_w_number) %>%
+                           summarize(x = median(x = UMAP_1),
+                                     y = median(x = UMAP_2)),
+                         mapping = aes(label = celltype.l2_number, x = x, y = y),
+                         alpha = 0.9, 
+                         show.legend = F) +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        facet_wrap(~Tissue, nrow = 1, ncol = 2) +
+        scale_color_manual(values = l2_colors) +
+        #scale_color_discrete(name = "Dose", labels = l2_colors_df$Label) + 
+        theme_minimal() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.pos = "bottom",
+              legend.title = element_blank(),
+              axis.title.x = element_blank(),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              strip.text.x = element_text(face = "bold")))
+dev.off()
+
+#Problem with the following code is that NAs are introduced in cells that don't have a particular celltype. I recall fixing that at one point, but I cannot remember where.
+
+cell_abundances <- seuratObject@meta.data %>%
+  dplyr::group_by(celltype.l1, celltype.l2, SampleID, Tissue) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::group_by(SampleID, celltype.l1) %>%
+  dplyr::mutate(Nl1sample = sum(Ncells),
+                Ncellprop = Ncells/Nl1sample,
+                Tissue = ifelse(Tissue == "PBMC", "PBMC (Human)", "Spleen (HIS-mouse)")) %>%
+  dplyr::filter(!celltype.l2 %in% c("Erythroblast", "HSPC", "Multiplet"))
+
+## Boxplot
+
+Cairo::Cairo(width = 2000, height = 1000, type = "pdf", file = file.path("boxplot_hs_cd45p_live_singlet_spleen_pbmc_celltypel2.pdf"), bg = "white", units = "px", dpi = 120)
+ggplot(cell_abundances, aes(x = celltype.l2, y = Ncellprop, col = Tissue)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  geom_point(position = position_dodge(width=0.75), alpha = 0.5) +
+  facet_grid(.~celltype.l1, scales = "free", space='free') +
+  labs(subtitle = "Proportion relative to lineage",
+       y = "Proportion") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+dev.off()
+
+Cairo::Cairo(width = 2000, height = 1000, type = "pdf", file = file.path("boxplot_hs_cd45p_live_singlet_spleen_pbmc_celltypel2_spl_split.pdf"), bg = "white", units = "px", dpi = 120)
+cell_abundances %>%
+  dplyr::mutate(Source = ifelse(SampleID %in% c("HIS15SPL", "HIS16SPL", "HIS17SPL"), "Spleen (PF-HIS-mouse)", Tissue)) %>%
+  ggplot(aes(x = celltype.l2, y = Ncellprop, col = Source)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  geom_point(position = position_dodge(width=0.75), alpha = 0.5) +
+  facet_grid(.~celltype.l1, scales = "free", space='free') +
+  labs(subtitle = "Proportion relative to lineage",
+       y = "Proportion") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+dev.off()
+
+## Expression heatmap
+
+seuratObject_pbmc <- seuratObject[,seuratObject@meta.data$Tissue == "PBMC"]
+
+seuratObject_pbmc <- SCTransform(seuratObject_pbmc, conserve.memory = T)
+
+Idents(seuratObject_pbmc) <- "celltype.l2"
+
+l2_markers <- FindAllMarkers(object = seuratObject_pbmc, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+top5_l2_markers <- l2_markers %>%
+  dplyr::group_by(cluster) %>%
+  dplyr::slice_max(n = 5, order_by = avg_log2FC) %>%
+  dplyr::mutate(cluster = factor(cluster, levels = c(l2_colors_df$Celltype_l2)))
+top5_l2_markers <- top5_l2_markers[order(top5_l2_markers$cluster),]
+
+Idents(seuratObject_pbmc) <- "celltype.l2_Tissue"
+
+seuratObject_pbmc@meta.data$celltype.l2_Tissue <- paste0(seuratObject_pbmc@meta.data$celltype.l2, "_", seuratObject_pbmc@meta.data$Tissue)
+
+Cairo::Cairo(width = 3500, height = 4000, type = "pdf", file = file.path("umap_hs_cd45p_live_singlet_spleen_pbmc_top5_mgenes.pdf"), bg = "white", units = "px", dpi = 120)
+DoHeatmap(seuratObject_pbmc, features = unique(top5_l2_markers$gene))
+dev.off()
+
+top5_l2_marker_exprs <- GetAssayData(seuratObject, assay = "RNA")[unique(top5_l2_markers$gene),]
+
+top5_l2_marker_exprs <- tidyr::pivot_longer(data.frame(top5_l2_marker_exprs, Gene = rownames(top5_l2_marker_exprs)), 
+                                                 !Gene,
+                                                 names_to = "CB", 
+                                                 values_to = "nUMIs") %>%
+  dplyr::mutate(CB = gsub("\\.", "-", CB)) %>%
+  dplyr::inner_join(data.frame(seuratObject@meta.data, 
+                               CB = rownames(seuratObject@meta.data)), 
+                    by = "CB") %>%
+  dplyr::group_by(celltype.l2, Gene, Tissue) %>%
+  dplyr::summarize(Median = median(log2(nUMIs+1)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Tissue_celltype.l2 = paste0(Tissue, "_", celltype.l2)) %>%
+  dplyr::ungroup() %>%
+  dplyr::select(-c(Percentage, Tissue, celltype.l2)) %>%
+  tidyr::pivot_wider(names_from = Tissue_celltype.l2, values_from = Median) %>%
+  data.frame(., row.names = .$Gene) %>%
+  dplyr::select(-Gene)
+top5_l2_marker_exprs <- top5_l2_marker_exprs[unique(top5_l2_markers$gene),]
+
+colnames(top5_l2_marker_exprs) <- gsub("\\.\\.1", "+", colnames(top5_l2_marker_exprs))
+colnames(top5_l2_marker_exprs) <- gsub("\\.$", "-", colnames(top5_l2_marker_exprs))
+colnames(top5_l2_marker_exprs) <- gsub("\\.", " ", colnames(top5_l2_marker_exprs))
+
+top_annotation <- data.frame(do.call(rbind, strsplit(colnames(top5_l2_marker_exprs), split = "_")))
+colnames(top_annotation) <- c("Tissue", "celltype.l2")
+
+l2_colors_hm <- l2_colors
+names(l2_colors_hm) <- l2_colors_df$Celltype_l2
+
+Cairo::Cairo(width = 3500, height = 4000, type = "pdf", file = file.path("umap_hs_cd45p_live_singlet_spleen_pbmc_top5_markergenes.pdf"), bg = "white", units = "px", dpi = 120)
+Heatmap(as.matrix(top5_l2_marker_exprs), 
+        #rect_gp = gpar(col = "white", lwd = 2),
+        cluster_rows = T,
+        cluster_columns = F,
+        name = "Median expression cells",
+        col=viridis(100),
+        top_annotation = HeatmapAnnotation(Tissue = top_annotation$Tissue,
+                                           Celltype = top_annotation$celltype.l2,
+                                           gp = gpar(col = "black"),
+                                           annotation_name_side = "left",
+                                           col = list(Tissue = c("PBMC" = "#F8766D", "Spleen" = "#00BFC4"),
+                                                      Celltype = l2_colors_hm)))
+dev.off()

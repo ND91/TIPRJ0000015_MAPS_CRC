@@ -1,0 +1,23 @@
+#!/usr/bin/env Rscript
+# The goal of this script is to select the TX-derived cells only.
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 3) {
+  stop(paste0("Script needs 4 arguments. Current input is:", args))
+}
+
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(SeuratDisk))
+suppressPackageStartupMessages(library(dplyr))
+
+seurat_rds_path <- args[1]
+tx_seurat_rds_path <- args[2]
+
+seuratObject <- readRDS(seurat_rds_path)
+
+tx_seuratObject <- seuratObject[,seuratObject@meta.data$Tissue == "TX"]
+
+# Save data
+saveRDS(tx_seuratObject, tx_seurat_rds_path, compress = "gzip")
+
+sessionInfo()

@@ -1,0 +1,16 @@
+T_curated_annotations <- curated_annotations %>%
+  dplyr::filter(manual_l1 == "T")
+
+
+T_curated_annotations <- T_curated_annotations %>%
+  dplyr::mutate(manual_l3 = manual_l4,
+                manual_l3 = ifelse(manual_l3 == "CD8 NKT XCL+", "CD8 NKT", manual_l3),
+                manual_l3 = ifelse(manual_l3 == "CD8 TEM XCL+", "CD8 TEM", manual_l3))
+
+
+nonT_curated_annotations <- curated_annotations %>%
+  dplyr::filter(manual_l1 != "T")
+
+curated_annotations <- rbind(nonT_curated_annotations, T_curated_annotations)
+
+write.csv(table(curated_annotations$manual_l4, curated_annotations$manual_l3), "../../../l4rl3.csv")

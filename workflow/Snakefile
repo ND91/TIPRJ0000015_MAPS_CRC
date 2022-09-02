@@ -1,0 +1,55 @@
+import pandas as pd
+import numpy as np
+import os
+import re
+import glob
+from snakemake.utils import min_version
+from snakemake.utils import validate
+
+configfile: "config/config.yaml"
+
+sample_metadata = pd.read_excel(config['sample_metadata'], header=0)
+sample_files = pd.read_excel(config['sample_files'], header=0)
+
+fastq_basenames = sample_files['Basename_fastq']
+
+fastq_df = pd.concat({'old_path' : fastq_basenames,
+                      'file' : fastq_basenames.apply(lambda x: os.path.basename(x))},
+                     axis=1)
+                     
+fastq_fns = fastq_df['file'].unique().tolist()
+
+# Files
+fastq_df = fastq_df.drop_duplicates()
+
+runs = sample_files['Run_ID']
+
+celltypes=["Macrophages C1Q+", "Macrophages FN1+", "Macrophages SPP1+", "CD4 Treg memory"]
+
+include: "rules/resources.smk"
+include: "rules/cellranger.smk"
+include: "rules/r.smk"
+#include: "rules/scrublet.smk"
+#include: "rules/ambiant.smk"
+
+wildcard_constraints:
+  run='|'.join([re.escape(x) for x in runs]),
+  
+rule all:
+  input:
+    #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
+    #expand("output/cellranger/{run}", run=runs),
+    #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
+    #"output/merged/merged_SeuratObject.Rds",
+    #"output/curated/curated_SeuratObject.Rds",
+    #"output/tx/tx_SeuratObject.Rds",
+    "output/figures/fig_boxplot_tx_l3rl2.svg",
+    "output/figures/fig_boxplot_pf_tx_l3rl2.svg",
+    "output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
+    #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
+    "output/figures/tsne_pbmc_pf_tx.csv",
+    expand("output/pbmc_pf_tx_paired/{celltype}/{celltype}_degs.csv", celltype=celltypes),
+    
+    
+    #Figures
+    #"output/figures/cells_per_organism/cells_per_organism_raw_df.Rds",

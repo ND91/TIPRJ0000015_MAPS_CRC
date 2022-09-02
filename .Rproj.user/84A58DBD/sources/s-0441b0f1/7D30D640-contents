@@ -1,0 +1,10 @@
+B_annotations <- read.csv("../../../config/annotations/B_celltype_annotations.csv")
+Dead_debris_annotations <- read.csv("../../../config/annotations/Dead_debris_celltype_annotations.csv")
+Multiplets_annotations <- read.csv("../../../config/annotations/Multiplets_celltype_annotations.csv") %>%
+  dplyr::mutate(celltype_l1 = ifelse(celltype_l1 == "CDCs", "Myeloid", celltype_l1))
+Myeloid_annotations <- read.csv("../../../config/annotations/Myeloid_celltype_annotations.csv")
+NKILC_annotations <- read.csv("../../../config/annotations/NKILC_celltype_annotations.csv")
+T_annotations <- read.csv("../../../config/annotations/T_celltype_annotations.csv")
+
+celltype_annotations <- rbind(B_annotations, Dead_debris_annotations, Multiplets_annotations, Myeloid_annotations, NKILC_annotations, T_annotations)
+table(celltype_annotations$celltype_l1)

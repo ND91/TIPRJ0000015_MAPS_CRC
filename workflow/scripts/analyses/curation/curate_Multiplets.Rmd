@@ -1,0 +1,204 @@
+---
+title: "curate multiplet annotations"
+author: "Andrew Y.F. Li Yim"
+date: '2022-08-10'
+output: html_document
+---
+
+The goal of this script is to curate the B annotations lifted from the human PF atlas dataset. 
+
+```{r libraries, include=FALSE}
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(Cairo))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+```{r setup}
+merged_rds <- file.path("..", "..", "..", "output", "merged", "merged_SeuratObject.Rds")
+seurat_Multiplets_curated_rds <- file.path("..", "..", "..", "output", "split", "Myeloid_curated_SeuratObject.Rds")
+```
+
+## Preparation
+
+```{r data import and preparation, fig.width = 10, fig.heigh = 10}
+merged <- readRDS(merged_rds)
+
+seurat_Multiplets <- merged[,merged@meta.data$celltype_l1 == "Multiplets"]
+seurat_Multiplets <- seurat_Multiplets[Matrix::rowSums(seurat_Multiplets) != 0, ]
+
+seurat_Multiplets <- SCTransform(seurat_Multiplets, conserve.memory = T)
+seurat_Multiplets <- RunPCA(object = seurat_Multiplets, npcs = 100, seed.use = 9087163)
+
+ElbowPlot(object = seurat_Multiplets, ndims = 100)
+```
+
+A dimensionality of 37 seems reasonable.
+
+```{r dimensionality reduction, fig.width = 10, fig.height = 10}
+seurat_Multiplets <- FindNeighbors(seurat_Multiplets, reduction = "pca", dims = 1:22)
+seurat_Multiplets <- FindClusters(seurat_Multiplets, resolution = 0.5, verbose = FALSE)
+seurat_Multiplets <- RunUMAP(seurat_Multiplets, dims = 1:22)
+seurat_Multiplets@meta.data$subcluster <- paste0("Multiplets.", seurat_Multiplets@meta.data$seurat_clusters)
+Idents(seurat_Multiplets) <- "subcluster"
+
+DimPlot(seurat_Multiplets, group.by = "subcluster", raster = T, label = T) +
+  labs(title = "Multiplets",
+       subtitle = "Louvain clustering") +
+  theme(legend.pos = "bottom")
+```
+
+```{r clusters}
+table(seurat_Multiplets@meta.data$subcluster)
+```
+
+In total, we find 19 clusters.
+
+```{r celltype_l4, fig.height = 10, fig.width = 30}
+DimPlot(seurat_Multiplets, group.by = "subcluster", raster = T, label = T, split.by = "Tissue") +
+  labs(title = "Multiplets",
+       subtitle = "Louvain clustering") +
+  theme(legend.pos = "bottom")
+```
+
+It is indeed observable that each tissue has its own dead/debris cluster
+
+## Donor-specific clusters
+
+```{r donor specific umap, fig.width=10, fig.height=10}
+DimPlot(seurat_Multiplets, group.by = "SampleID", raster = T, label = T) +
+  labs(title = "Multiplets",
+       subtitle = "Donor") +
+  theme(legend.pos = "none")
+```
+
+```{r donor specific clusters heatmap, fig.width = 5, fig.height = 17.5}
+pheatmap::pheatmap(prop.table(table(seurat_Multiplets@meta.data$SampleID, seurat_Multiplets@meta.data$subcluster), 
+                              margin = 2), 
+                   display_numbers = T)
+```
+
+From this observation, it appears that the following clusters might be sample-specific (>0.5 cells from one cluster derived from one donor):
+- Multiplets.4: pt78_PBMC
+
+## Dead/debris
+
+```{r dead debris umap, fig.width=20, fig.height=10}
+FeaturePlot(seurat_Multiplets, features = c("percent_MT", "nFeature_RNA"), raster = T, label = T)
+```
+
+It does not appear to me that all clusters might be dead/debris. A gating strategy might make it clearer.
+
+```{r dead debris featurescatter, fig.width=10, fig.height=10}
+FeatureScatter(seurat_Multiplets, feature1 = "percent_MT", feature2 = "nFeature_RNA", raster = T) +
+  geom_hline(yintercept = 3000)
+```
+
+## Cycling cells
+
+```{r cycling cells umap, fig.width=10, fig.height=10}
+DimPlot(seurat_Multiplets, group.by = "Phase", raster = T, label = T) +
+  labs(title = "Multiplets",
+       subtitle = "Phase") +
+  theme(legend.pos = "bottom")
+```
+
+```{r cycling cells heatmap, fig.height=4, fig.width=3}
+pheatmap::pheatmap(prop.table(table(seurat_Multiplets@meta.data$seurat_clusters, seurat_Multiplets@meta.data$Phase), 
+                              margin = 1), 
+                   display_numbers = T)
+```
+
+No evident cycling cells present
+
+```{r marker genes, fig.width = 15, fig.height=15}
+marker_genes <- FindAllMarkers(seurat_Multiplets)
+marker_genes <- split(marker_genes, f = marker_genes$cluster)
+saveRDS(marker_genes, "~/ltytgat/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc/config/annotations/Multiplets_subcluster_markers.Rds")
+```
+
+```{r Multiplets.0 markers, fig.width = 20, fig.height = 20}
+head(marker_genes$Multiplets.0, n = 20)
+```
+
+```{r Multiplets.0 marker umap, fig.width = 20, fig.height = 30}
+FeaturePlot(seurat_Multiplets, c("PTPRC", "CLEC10A","HLA-DPA1","CD1D", "ITGAX", "CLEC9A"), label = T, ncol = 2)
+```
+
+Multiplets.0 are CDC2s.
+
+```{r Multiplets.1 marker genes}
+head(marker_genes$`Multiplets.1`, n = 20)
+```
+
+```{r Multiplets.1 umap, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Multiplets, c("DPYD", "VCAN", "CD163", "CD14"), label = T)
+```
+
+```{r Multiplets.2 marker genes}
+head(marker_genes$`Multiplets.2`, n = 20)
+```
+
+```{r Multiplets.2 umap, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Multiplets, c("CD3D", "CD4", "CD8A", "RPS3A"), label = T)
+```
+
+```{r Multiplets.3 marker genes}
+head(marker_genes$`Multiplets.3`, n = 20)
+```
+
+```{r Multiplets.3 umap, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Multiplets, c("PRDM1", "IL32", "CD8A", "IL7R","ITGB1", "PPBP"), label = T)
+```
+
+```{r Multiplets.4 marker genes}
+head(marker_genes$`Multiplets.4`, n = 20)
+```
+
+```{r Multiplets.4 umap, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_Multiplets, c("PRDM1", "IL32", "CD8A", "IL7R","ITGB1"), label = T)
+```
+
+```{r fig.width=20, fig.height=20}
+FeaturePlot(seurat_Multiplets, c("MS4A1", "CD27", "VCAN"), label = T)
+```
+
+
+## Annotation
+
+```{r cycling cells annotate, fig.width=10, fig.height=10}
+seurat_Multiplets_anno <- seurat_Multiplets
+
+seurat_Multiplets_anno@meta.data <- seurat_Multiplets_anno@meta.data %>%
+  dplyr::mutate(cellID = rownames(.),
+                celltype_l4 = case_when(subcluster %in% c("Multiplets.0") ~ "CDC2s",
+                                        subcluster %in% c("Multiplets.1") ~ "Macrophages VCAN+/platelet multiplets",
+                                        subcluster %in% c("Multiplets.2") ~ "CD4 TEM/platelet multiplets",
+                                        subcluster %in% c("Multiplets.3", "Multiplets.4") ~ "CD4 TCM/platelet multiplets",
+                                        subcluster %in% c("Multiplets.5") ~ "Dead/debris",
+                                        subcluster %in% c("Multiplets.1") & GetAssayData(seurat_Multiplets_anno)[c("CD3D"),]>0 ~ "CD4 TCM",
+                                        subcluster %in% c("Multiplets.1") & GetAssayData(seurat_Multiplets_anno)[c("MS4A1"),]>0 & GetAssayData(seurat_Multiplets_anno)[c("CD3D"),]>0 ~ "CD4 TCM/B multiplets",
+                                        subcluster %in% c("Multiplets.1") & GetAssayData(seurat_Multiplets_anno)[c("MS4A1"),]>0 & GetAssayData(seurat_Multiplets_anno)[c("VCAN"),]>0 ~ "Macrophages VCAN+/B multiplets",
+                                        TRUE ~ celltype_l4),
+                celltype_l3 = celltype_l4,
+                celltype_l3 = ifelse(celltype_l3 %in% c("Macrophages VCAN+/platelet multiplets"), "Myeloid/platelet multiplets", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD4 TEM/platelet multiplets", "CD4 TCM/platelet multiplets"), "T/platelet multiplets", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD4 TCM/B multiplets"), "T/B multiplets", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("Macrophages VCAN+/B multiplets"), "Myeloid/B multiplets", celltype_l3),
+                celltype_l2 = celltype_l3,
+                celltype_l2 = ifelse(celltype_l2 %in% c("CDC2s"), "CDCs", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Myeloid/platelet multiplets", "T/platelet multiplets", "T/B multiplets", "Myeloid/B multiplets"), "Multiplets", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("CD4 TCM"), "CD4T", celltype_l2),
+                celltype_l1 = celltype_l2)
+
+DimPlot(seurat_Multiplets_anno, group.by = "celltype_l4", raster = T, label = T) +
+  labs(title = "Myeloid",
+       subtitle = "Celltype l4") +
+  theme(legend.pos = "bottom")
+```
+
+The aforementioned chunks (hopefully) provide context as to how we annotated the supposed dead/debris. The being said, some steps rely on unsupervised clustering algorithms whose annotation is likely based on a random seed. I cannot ascertain that under different versions of R the clustering annotations remain the same. Accordingly, I have stored the annotations we made in a separate file (config/annotations).
+
+```{r sessionInfo}
+sessionInfo()
+```

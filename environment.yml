@@ -1,0 +1,11 @@
+name: mapscrc
+channels:
+  - conda-forge
+  - bioconda
+  - anaconda
+dependencies:
+  - snakemake
+  - pandas
+  - openpyxl
+  - graphviz
+  - jupyterlab 

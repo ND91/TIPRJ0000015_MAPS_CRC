@@ -1,0 +1,245 @@
+---
+title: "curate T annotations"
+author: "Andrew Y.F. Li Yim"
+date: '2022-08-10'
+output: html_document
+---
+
+The goal of this script is to curate the B annotations lifted from the human PF atlas dataset. 
+
+```{r libraries, include=FALSE}
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(Cairo))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+```{r setup}
+merged_rds <- file.path("..", "..", "..", "output", "merged", "merged_SeuratObject.Rds")
+seurat_T_curated_rds <- file.path("..", "..", "..", "output", "split", "B_curated_SeuratObject.Rds")
+```
+
+## Preparation
+
+```{r data import and preparation, fig.width = 10, fig.heigh = 10}
+merged <- readRDS(merged_rds)
+
+seurat_T <- merged[,merged@meta.data$celltype_l1 == "T"]
+seurat_T <- seurat_T[Matrix::rowSums(seurat_T) != 0, ]
+
+seurat_T <- SCTransform(seurat_T, conserve.memory = T)
+seurat_T <- RunPCA(object = seurat_T, npcs = 100, seed.use = 7968234)
+
+ElbowPlot(object = seurat_T, ndims = 100)
+```
+
+A dimensionality of 46 seems reasonable.
+
+```{r dimensionality reduction, fig.width = 10, fig.height = 10}
+seurat_T <- FindNeighbors(seurat_T, reduction = "pca", dims = 1:46)
+seurat_T <- FindClusters(seurat_T, resolution = 0.5, verbose = FALSE)
+seurat_T <- RunUMAP(seurat_T, dims = 1:46)
+seurat_T@meta.data$subcluster <- paste0("T.", seurat_T@meta.data$seurat_clusters)
+Idents(seurat_T) <- "subcluster"
+
+DimPlot(seurat_T, group.by = "subcluster", raster = T, label = T) +
+  labs(title = "T",
+       subtitle = "Louvain clustering") +
+  theme(legend.pos = "bottom")
+```
+
+```{r clusters}
+table(seurat_T@meta.data$subcluster)
+```
+
+In total, we find 20 clusters.
+
+```{r celltype_l4, fig.height = 10, fig.width = 10}
+DimPlot(seurat_T, group.by = "celltype_l4", raster = T, label = T) +
+  labs(title = "T",
+       subtitle = "PF Atlas") +
+  theme(legend.pos = "bottom")
+```
+
+## Donor-specific clusters
+
+```{r donor specific umap, fig.width=10, fig.height=10}
+DimPlot(seurat_T, group.by = "SampleID", raster = T, label = T) +
+  labs(title = "T",
+       subtitle = "Donor") +
+  theme(legend.pos = "none")
+```
+
+```{r donor specific clusters heatmap, fig.width = 10, fig.height = 17.5}
+pheatmap::pheatmap(prop.table(table(seurat_T@meta.data$SampleID, seurat_T@meta.data$seurat_clusters), 
+                              margin = 2), 
+                   display_numbers = T)
+```
+
+From this observation, it appears that the following clusters might be sample-specific (>0.5 cells from one cluster derived from one donor):
+- T.11: p16_PBMC
+- T.18: p16_PBMC
+
+## Dead/debris
+
+```{r dead debris umap, fig.width=20, fig.height=10}
+FeaturePlot(seurat_T, features = c("percent_MT", "nFeature_RNA"), raster = T, label = T)
+```
+
+T.9 and T.11 appear to present some higher percentage of mitochondrial reads while at the same time a lower number of unique genes. 
+
+```{r dead debris featurescatter, fig.width=10, fig.height=10}
+FeatureScatter(seurat_T, feature1 = "percent_MT", feature2 = "nFeature_RNA", raster = T) +
+  geom_hline(yintercept = 1500) +
+  geom_vline(xintercept = 12.5)
+```
+
+## Cycling cells
+
+```{r cycling cells umap, fig.width=10, fig.height=10}
+DimPlot(seurat_T, group.by = "Phase", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "Phase") +
+  theme(legend.pos = "bottom")
+```
+
+
+```{r cycling cells heatmap, fig.height=8, fig.width=3}
+pheatmap::pheatmap(prop.table(table(seurat_T@meta.data$seurat_clusters, seurat_T@meta.data$Phase), 
+                              margin = 1), 
+                   display_numbers = T)
+```
+
+T.19 is largely a S-phase cluster.
+
+## Improper lineages
+
+```{r pf_atlas celltype_l4}
+table(seurat_T@meta.data$celltype_l4)
+```
+
+There appear to be some incorrect L4 cells that are not T cells, namely the B intermediate kappa, Basophils, Macrophages proliferating, Mast, Neutrophils, NK CD16-, NK CD16-XCL+, NK CD16+GNLY-GZMB+, NK CD16+GNLY+GZMBFGFBP2+, NK proliferating, Non-classical monocytes, PDCs, and Platelets. While most of the myeloid cells are represented by a single cell, the NK cells are present in greater numbers, which is perhaps unsurprising given their likeliness at a transcriptome-wide level to the T cells.
+
+```{r misclassified myeloids, fig.width = 10, fig.height = 40}
+seurat_T_myeloid <- seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("Basophils", "Macrophages proliferating", "Mast", "Neutrophils", "Non-classical monocytes", "PDCs", "Platelets")]
+
+seurat_T_myeloid@meta.data$celltype_l4
+```
+
+```{r myeloid markers}
+GetAssayData(seurat_T_myeloid)[c("CD3D", "CD4", "CD8A", "FCGR3B", "TPSAB1", "FCER1A", "CD14", "FCGR3A", "TCF4", "PPBP", "VIM", "KIT", "GNLY"),]
+```
+
+```{r}
+seurat_T_myeloid@meta.data[,c("nFeature_RNA", "celltype_l4_score")]
+```
+
+
+```{r misclassified nk, fig.width = 10, fig.height = 40}
+seurat_T_nk <- seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("CD8 NKT", "NK CD16-", "NK CD16-XCL+", "NK CD16+GNLY-GZMB+", "NK CD16+GNLY+GZMB+FGFBP2+", "NK proliferating")]
+
+table(seurat_T_nk@meta.data$celltype_l4)
+```
+
+```{r misclassified nk, fig.width = 10, fig.height = 10}
+DimPlot(seurat_T_nk, group.by = "celltype_l4", raster = T, label = T) +
+  theme(legend.pos = "bottom")
+```
+
+```{r nk umap markers, fig.width = 20, fig.height = 50}
+Idents(seurat_T_nk) <- "celltype_l4"
+FeaturePlot(seurat_T_nk, c("CD3D", "CD4", "CD8A", "GNLY", "NKG7", "FCGR3A", "XCL1", "MKI67", "GZMB", "FGFBP2"), label = T, ncol = 2)
+```
+
+
+## Global check
+
+```{r global umap markers, fig.width = 20, fig.height = 40}
+FeaturePlot(seurat_T, c("MS4A1", "BANK1", "CD14", "CD3D", "CD4", "GNLY", "CD163"), label = T, ncol = 2)
+```
+
+```{r global umap t markers, fig.width = 20, fig.height = 50}
+FeaturePlot(seurat_T, c("CD3D", "CD4", "CD8A", "GNLY", "GZMH", "SELL", "CCR7", "TRGC1", "TRDC"), label = T, ncol = 2)
+```
+
+```{r CD4 MAIT, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("CD4 MAIT")], features =  c("CD3D", "CD4", "CD8A", "KLRB1"), label = T)
+```
+
+```{r CD8 MAIT, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("CD8 MAIT")], features =  c("CD3D", "CD4", "CD8A", "KLRB1"), label = T)
+```
+
+```{r CD8 TRM, fig.width = 20, fig.height = 20}
+FeaturePlot(seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("CD8 TRM")], features =  c("CD3D", "CD4", "CD8A", "ITGA1"), label = T)
+```
+
+```{r CD8 TEM, fig.width = 20, fig.height = 40}
+FeaturePlot(seurat_T[,seurat_T@meta.data$celltype_l4 %in% c("CD8 TEM KLF2+SELL+")], features =  c("CD3D", "CD4", "CD8A", "TRAC", "TRGC1", "KLF2", "SELL"), label = T, ncol = 2)
+```
+
+```{r CD8 TEM All, fig.width = 20, fig.height = 40}
+FeaturePlot(seurat_T, features =  c("CD3D", "CD4", "CD8A", "TRAC", "TRGC1", "KLF2", "SELL"), label = T, ncol = 2)
+```
+
+```{r umap, fig.width = 15, fig.height=15}
+DimPlot(seurat_T, group.by = "celltype.l4", label = T) +
+  theme(legend.pos = "bottom")
+```
+
+By and large, the annotations are congruent to their expression. There are some minor adjustments to be made. It appears that B.0, B.3, and B.8 are Pre-B based on their expression of CD9 and MME. I will likely need to do some gating on that.
+
+## Annotation
+
+```{r cycling cells annotate, fig.width=10, fig.height=10}
+seurat_T_anno <- seurat_T
+
+seurat_T_anno@meta.data <- seurat_T_anno@meta.data %>%
+  dplyr::mutate(cellID = rownames(.),
+                celltype_l4 = case_when(subcluster == "B.19" ~ "T proliferating",
+                                        celltype_l4 == "NK proliferating" ~ "T proliferating",
+                                        subcluster == "T.15" ~ "CD8 TEM XCL+",
+                                        celltype_l4 == "NK CD16-" ~ "CD8 NKT",
+                                        celltype_l4 == "NK CD16+GNLY-GZMB+" ~ "CD8 NKT",
+                                        celltype_l4 == "NK CD16+GNLY+GZMB+FGFBP2+" ~ "CD8 NKT",
+                                        celltype_l4 == "NK CD16-XCL+" ~ "CD8 NKT XCL+",
+                                        celltype_l4 == "CD8 TEM KLF2+SELL+" ~ "CD8 TEM",
+                                        cellID == "S20201113_SCS65_1_GTGTTCCCAATGTTGC-1" ~ "T/platelet multiplets",
+                                        cellID == "S20220330_SCS107_3_TACCTCGGTGTTGACT-1" ~ "Neutrophils",
+                                        cellID == "S20220514_SCS122_1_CAACCAATCGCGTGAC-1" ~ "T/DC multiplets",
+                                        cellID == "S20220512_SCS126_1_GGGTTATAGAGCGACT-1" ~ "T/DC multiplets",
+                                        cellID == "S20220330_SCS107_3_TACCTCGGTGTTGACT-1" ~ "Neutrophils",
+                                        cellID == "S20220416_SCS110_1_TGAATCGTCGTCAAAC-1" ~ "Multiplets",
+                                        cellID == "S20220506_SCS113_2_AATGCCAGTTCTTGCC-1" ~ "Multiplets",
+                                        TRUE ~ celltype_l4),
+                celltype_l3 = celltype_l4,
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD8 NKT XCL+", "CD8 NKT"), "CD8 NKT", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD8 TEM XCL+", "CD8 TEM"), "CD8 TEM", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD4 CTL memory", "CD4 CTL"), "CD4 CTL", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("T/platelet multiplets"), "Myeloid/T multiplets", celltype_l2),
+                celltype_l3 = ifelse(celltype_l3 %in% c("CD4 Treg memory"), "CD4 Treg", celltype_l3),
+                celltype_l2 = celltype_l3,
+                celltype_l2 = ifelse(celltype_l2 %in% c("B intermediate kappa"), "B intermediate", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Non-classical monocytes"), "Monocytes", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Basophils", "Mast", "Neutrophils"), "Granulocytes", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("CD4 CTL", "CD4 MAIT", "CD4 naive", "CD4 TCM", "CD4 TEM", "CD4 Treg"), "CD4T", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("CD8 CTL", "CD8 MAIT", "CD8 naive", "CD8 TCM", "CD8 TEM", "CD8 NKT", "CD8 T memory proliferating", "CD8 TRM"), "CD8T", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("DNT", "GDT"), "other T", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Myeloid/T multiplets"), "Multiplets", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Macrophages proliferating"), "Macrophages", celltype_l2),
+                celltype_l1 = celltype_l2,
+                celltype_l1 = ifelse(celltype_l1 %in% c("B intermediate", "Plasmablasts"), "B", celltype_l1),
+                celltype_l1 = ifelse(celltype_l1 %in% c("Granulocytes", "PDCs", "Monocytes", "Macrophages", "Platelets"), "Myeloid", celltype_l1),
+                celltype_l1 = ifelse(celltype_l1 %in% c("CD4T", "CD8T", "other T", "T proliferating"), "T", celltype_l1))
+
+DimPlot(seurat_T_anno, group.by = "celltype_l1", raster = T, label = T) +
+  labs(title = "T",
+       subtitle = "Celltype l4") +
+  theme(legend.pos = "bottom")
+```
+
+The aforementioned chunks (hopefully) provide context as to how we annotated the T lineage. The being said, some steps rely on unsupervised clustering algorithms whose annotation is likely based on a random seed. I cannot ascertain that under different versions of R the clustering annotations remain the same. Accordingly, I have stored the annotations we made in a separate file (config/annotations).
+
+```{r sessionInfo}
+sessionInfo()
+```

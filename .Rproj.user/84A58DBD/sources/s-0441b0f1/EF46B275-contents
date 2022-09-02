@@ -1,0 +1,224 @@
+---
+title: "curate B annotations"
+author: "Andrew Y.F. Li Yim"
+date: '2022-08-10'
+output: html_document
+---
+
+The goal of this script is to curate the B annotations lifted from the human PF atlas dataset. 
+
+```{r libraries, include=FALSE}
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(Cairo))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+```{r setup}
+merged_rds <- file.path("..", "..", "..", "output", "merged", "merged_SeuratObject.Rds")
+seurat_B_curated_rds <- file.path("..", "..", "..", "output", "split", "B_curated_SeuratObject.Rds")
+```
+
+## Preparation
+
+```{r data import and preparation, fig.width = 10, fig.heigh = 10}
+merged <- readRDS(merged_rds)
+
+seurat_B <- merged[,merged@meta.data$celltype_l1 == "B"]
+seurat_B <- seurat_B[Matrix::rowSums(seurat_B) != 0, ]
+
+seurat_B <- SCTransform(seurat_B, conserve.memory = T)
+seurat_B <- RunPCA(object = seurat_B, npcs = 100, seed.use = 43218967)
+
+ElbowPlot(object = seurat_B, ndims = 100)
+```
+
+A dimensionality of 38 seems reasonable.
+
+```{r dimensionality reduction, fig.width = 10, fig.height = 10}
+seurat_B <- FindNeighbors(seurat_B, reduction = "pca", dims = 1:30)
+seurat_B <- FindClusters(seurat_B, resolution = 0.5, verbose = FALSE)
+seurat_B <- RunUMAP(seurat_B, dims = 1:30)
+seurat_B@meta.data$subcluster <- paste0("B.", seurat_B@meta.data$seurat_clusters)
+Idents(seurat_B) <- "subcluster"
+
+DimPlot(seurat_B, group.by = "subcluster", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "Louvain clustering") +
+  theme(legend.pos = "bottom")
+```
+
+```{r clusters}
+table(seurat_B@meta.data$subcluster)
+```
+
+In total, we find 15 clusters.
+
+```{r celltype_l4, fig.height = 10, fig.width = 10}
+DimPlot(seurat_B, group.by = "celltype_l4", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "PF Atlas") +
+  theme(legend.pos = "none")
+```
+
+## Donor-specific clusters
+
+```{r donor specific umap, fig.width=10, fig.height=10}
+DimPlot(seurat_B, group.by = "SampleID", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "Donor") +
+  theme(legend.pos = "none")
+```
+
+```{r donor specific clusters heatmap, fig.width = 7.5, fig.height = 17.5}
+pheatmap::pheatmap(prop.table(table(seurat_B@meta.data$SampleID, seurat_B@meta.data$seurat_clusters), 
+                              margin = 2), 
+                   display_numbers = T)
+```
+
+From this observation, it appears that the following clusters might be sample-specific (>0.5 cells from one cluster derived from one donor):
+- B.4: p16_PBMC
+- B.13: p16_PBMC
+- B.11: pt32_PBMC
+
+## Dead/debris
+
+```{r dead debris umap, fig.width=20, fig.height=10}
+FeaturePlot(seurat_B, features = c("percent_MT", "nFeature_RNA"), raster = T, label = T)
+```
+
+There does not appear to be a very strict cluster that appears to contain all the dead/debris. Instead, dead/debris can be found for most clusters. We will adopt a gating approach using the number of features at 1500 and the percentage MT higher than 12.5%.
+
+```{r dead debris featurescatter, fig.width=10, fig.height=10}
+FeatureScatter(seurat_B, feature1 = "percent_MT", feature2 = "nFeature_RNA", raster = T) +
+  geom_hline(yintercept = 1500) +
+  geom_vline(xintercept = 12.5)
+```
+
+## Cycling cells
+
+```{r cycling cells umap, fig.width=10, fig.height=10}
+DimPlot(seurat_B, group.by = "Phase", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "Phase") +
+  theme(legend.pos = "bottom")
+```
+
+There is no evident cluster that is largely composed of G2M or S phase cells.
+
+```{r cycling cells heatmap, fig.height=8, fig.width=3}
+pheatmap::pheatmap(prop.table(table(seurat_B@meta.data$seurat_clusters, seurat_B@meta.data$Phase), 
+                              margin = 1), 
+                   display_numbers = T)
+```
+
+## Improper lineages
+
+```{r pf_atlas celltype_l4}
+table(seurat_B@meta.data$celltype_l4)
+```
+
+There appear to be some incorrect L4 cells that are not B cells, namely the Neutrophils, Non-classical monocytes, and Platelets, each of which is only represented by a single cell.
+
+```{r misclassified l4}
+seurat_B@meta.data %>%
+  dplyr::filter(celltype_l4 %in% c("Neutrophils", "Non-classical monocytes", "Platelets"))
+```
+
+Indeed, the incorrect classifications presented scores with a median of 0.27 versus the 0.69 of the classifications that do match their lineages, implying that the Seurat classification model was not entirely sure. It would therefore make sense to scrutinize these cells in more detail.
+
+```{r}
+seurat_B_misclassified <- seurat_B[,seurat_B@meta.data$celltype_l4 %in% c("Neutrophils", "Non-classical monocytes", "Platelets")]
+
+GetAssayData(seurat_B_misclassified)[c("MS4A1", "CD14", "FCGR3B", "CD27", "IGLC1", "IGLC2", "IGLC3", "IGKC"),]
+```
+
+
+## Global check
+
+```{r global umap markers, fig.width = 16, fig.height = 32}
+FeaturePlot(seurat_B, c("MS4A1", "BANK1", "CD14", "CD3D", "CD4", "GNLY", "CD163"), label = T, ncol = 2)
+```
+
+```{r global umap b markers, fig.width = 16, fig.height = 42}
+FeaturePlot(seurat_B, c("MS4A1", "BANK1", "CD19", "CD27", "JCHAIN", "MME", "CD9", "IGHM", "CR2", "IGLC1", "IGLC2", "IGLC3", "IGKC"), label = T, ncol = 2)
+```
+
+```{r B7}
+FeatureScatter(seurat_B[,seurat_B@meta.data$subcluster %in% c("B.7")], feature1 = "IGLC2", feature2 = "IGLC3")
+```
+
+```{r B14}
+FeatureScatter(seurat_B[,seurat_B@meta.data$subcluster %in% c("B.14")], feature1 = "IGLC1", feature2 = "IGKC")
+```
+
+```{r umap, fig.width = 15, fig.height=15}
+DimPlot(seurat_B, group.by = "celltype.l4", label = T) +
+  theme(legend.pos = "bottom")
+```
+
+By and large, the annotations are congruent to their expression. There are some minor adjustments to be made. It appears that B.0, B.3, and B.8 are Pre-B based on their expression of CD9 and MME. I will likely need to do some gating on that.
+
+## Annotation
+
+```{r cycling cells annotate, fig.width=10, fig.height=10}
+seurat_B_anno <- seurat_B
+
+seurat_B_anno@meta.data <- seurat_B_anno@meta.data %>%
+  dplyr::mutate(cellID = rownames(.),
+                celltype_l4 = case_when(cellID == "S20201113_SCS65_1_CACTGGGTCTGCGGAC-1" ~ "B naive kappa",
+                                      cellID == "S20210707_SCS88_1_ATGGATCGTAAGAACT-1" ~ "B naive kappa",
+                                      cellID == "S20220330_SCS107_1_AACTTCTGTTCCGTTC-1" ~ "B naive lambda 2",
+                                      subcluster == "B.9" ~ "T/B multiplets",
+                                      subcluster == "B.12" ~ "Multiplets",
+                                      subcluster == "B.0" & celltype_l4 == "B naive kappa" ~ "B naive kappa",
+                                      subcluster == "B.1" & celltype_l4 == "B naive kappa" ~ "B naive kappa",
+                                      subcluster == "B.2" & celltype_l4 == "B naive kappa" ~ "B naive kappa",
+                                      subcluster == "B.7" & celltype_l4 == "B naive kappa" ~ "B naive kappa",
+                                      subcluster == "B.3" & celltype_l4 == "B naive lambda" ~ "B naive lambda 2",
+                                      subcluster == "B.5" & celltype_l4 == "B naive lambda" ~ "B naive lambda 2",
+                                      subcluster == "B.6" & celltype_l4 == "B naive lambda" ~ "B naive lambda 3",
+                                      subcluster == "B.8" & celltype_l4 == "B naive lambda" ~ "B naive lambda 1",
+                                      subcluster == "B.14" & celltype_l4 == "B naive lambda" ~ "B naive lambda 1",
+                                      subcluster == "B.1" & celltype_l4 == "B intermediate" ~ "B intermediate kappa",
+                                      subcluster == "B.2" & celltype_l4 == "B intermediate" ~ "B intermediate kappa",
+                                      subcluster == "B.7" & celltype_l4 == "B intermediate" ~ "B intermediate kappa",
+                                      subcluster == "B.3" & celltype_l4 == "B intermediate" ~ "B intermediate lambda 2",
+                                      subcluster == "B.5" & celltype_l4 == "B intermediate" ~ "B intermediate lambda 2",
+                                      subcluster == "B.6" & celltype_l4 == "B intermediate" ~ "B intermediate lambda 3",
+                                      subcluster == "B.8" & celltype_l4 == "B intermediate" ~ "B intermediate lambda 1",
+                                      subcluster == "B.14" & celltype_l4 == "B intermediate" ~ "B intermediate lambda 1",
+                                      subcluster == "B.1" & celltype_l4 == "B memory" ~ "B memory kappa",
+                                      subcluster == "B.2" & celltype_l4 == "B memory" ~ "B memory kappa",
+                                      subcluster == "B.7" & celltype_l4 == "B memory" ~ "B memory kappa",
+                                      subcluster == "B.3" & celltype_l4 == "B memory" ~ "B memory lambda 2",
+                                      subcluster == "B.5" & celltype_l4 == "B memory" ~ "B memory lambda 2",
+                                      subcluster == "B.6" & celltype_l4 == "B memory" ~ "B memory lambda 3",
+                                      subcluster == "B.8" & celltype_l4 == "B memory" ~ "B memory lambda 1",
+                                      subcluster == "B.14" & celltype_l4 == "B memory" ~ "B memory lambda 1",
+                                      GetAssayData(seurat_B)[c("CD9"),]>0 & GetAssayData(seurat_B)[c("MME"),]>0 ~ "Pre-B",
+                                      percent_MT>12.5 & nFeature_RNA<1500 ~ "Dead/debris",
+                                      TRUE ~ celltype_l4),
+                celltype_l3 = celltype_l4,
+                celltype_l3 = ifelse(celltype_l3 %in% c("B naive lambda 1", "B naive lambda 2", "B naive lambda 3"), "B naive lambda", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("B intermediate lambda 1", "B intermediate lambda 2", "B intermediate lambda 3"), "B intermediate lambda", celltype_l3),
+                celltype_l3 = ifelse(celltype_l3 %in% c("B memory lambda 1", "B memory lambda 2", "B memory lambda 3"), "B memory lambda", celltype_l3),
+                celltype_l2 = celltype_l3,
+                celltype_l2 = ifelse(celltype_l2 %in% c("B memory kappa", "B memory lambda"), "B memory", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("B naive kappa", "B naive lambda"), "B naive", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("Pre-B"), "BCP", celltype_l2),
+                celltype_l2 = ifelse(celltype_l2 %in% c("T/B multiplets"), "Multiplets", celltype_l2),
+                celltype_l1 = celltype_l2,
+                celltype_l1 = ifelse(celltype_l1 %in% c("B intermediate", "B memory", "B naive", "BCP"), "B", celltype_l1))
+
+DimPlot(seurat_B_anno, group.by = "celltype_l4", raster = T, label = T) +
+  labs(title = "B",
+       subtitle = "Celltype l4") +
+  theme(legend.pos = "bottom")
+```
+
+The aforementioned chunks (hopefully) provide context as to how we annotated the B lineage. The being said, some steps rely on unsupervised clustering algorithms whose annotation is likely based on a random seed. I cannot ascertain that under different versions of R the clustering annotations remain the same. Accordingly, I have stored the annotations we made in a separate file (config/annotations).
+
+```{r sessionInfo}
+sessionInfo()
+```
