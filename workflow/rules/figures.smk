@@ -1,60 +1,106 @@
-rule fig_cells_per_organism:
+rule fig_boxplot_tx_l3rl2:
   input:
-    counts=expand("output/cellranger/{runid}/outs/raw_feature_bc_matrix", runid = runs),
-    sample_metadata=config['sample_metadata'],
+    tx_seuratobject_rds="output/subsets/tx_SeuratObject.Rds",
   output:
-    cells_per_organism_raw_rds="output/figures/cells_per_organism/cells_per_organism_raw_df.Rds",
-    cells_per_organism_raw_csv="output/figures/cells_per_organism/cells_per_organism_raw_df.csv",
-    fig_cells_per_organism_raw_pdf="output/figures/cells_per_organism/cells_per_organism_raw.pdf",
-    cells_per_organism_processed_rds="output/figures/cells_per_organism/cells_per_organism_processed_df.Rds",
-    cells_per_organism_processed_csv="output/figures/cells_per_organism/cells_per_organism_processed_df.csv",
-    fig_cells_per_organism_processed_pdf="output/figures/cells_per_organism/cells_per_organism_processed.pdf",
+    boxplot_tx_l3rl2_df_csv="output/figures/fig_boxplot_tx_l3rl2.csv",
+    boxplot_tx_l3rl2_svg="output/figures/fig_boxplot_tx_l3rl2.svg",
   threads: 
     1
   conda:
-    "../envs/seurat.yaml"
+    "../envs/r.yaml",
   log:
-    "output/figures/cells_per_organism.log",
+    "output/figures/fig_boxplot_tx_l3rl2.log",
   benchmark:
-    "output/figures/cells_per_organism_benchmark.txt"
+    "output/figures/fig_boxplot_tx_l3rl2_benchmark.txt",
   resources:
-    mem_mb=150000,
+    mem_mb=16000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_cells_per_organism.R {input.counts} {input.sample_metadata} {output.cells_per_organism_raw_rds} {output.cells_per_organism_raw_csv} {output.fig_cells_per_organism_raw_pdf} {output.cells_per_organism_processed_rds} {output.cells_per_organism_processed_csv} {output.fig_cells_per_organism_processed_pdf} &>{log}
+    Rscript --vanilla workflow/scripts/figures/fig_boxplot_tx_l3rl2.R {input.tx_seuratobject_rds} {output.boxplot_tx_l3rl2_df_csv} {output.boxplot_tx_l3rl2_svg} &> {log}
     """
 
-rule cells_per_sampleID
-
-rule cells_per_runID
-
-rule umap_spleen_pbmc:
+rule fig_tsne_pbmc_pf_tx_tsne:
   input:
-    spleen_pbmc_seuratobject_rds="output/spleen_pbmc/spleen_pbmc_SeuratObject.Rds",
+    pbmc_pf_tx_paired_seuratobject_rds="output/subsets/pbmc_pf_tx_paired_SeuratObject.Rds",
   output:
-    umap_spleen_pbmc_pdf="output/figures/umap_spleen_pbmc.pdf",
+    tsne_pbmc_pf_tx_df_csv="output/figures/tsne_pbmc_pf_tx.csv",
+    tsne_pbmc_pf_tx_fig1_svg="output/figures/fig_tsne_pbmc_pf_tx_fig1.svg",
+    tsne_pbmc_pf_tx_fig2_svg="output/figures/fig_tsne_pbmc_pf_tx_fig2.svg",
+    tsne_pbmc_pf_tx_fig3_svg="output/figures/fig_tsne_pbmc_pf_tx_fig3.svg",
   threads: 
     1
   conda:
-    "../envs/seurat.yaml",
+    "../envs/r.yaml",
   log:
-    "output/figures/umap_hs_cd45p_live_singlet_spleen_pbmc.log",
+    "output/figures/fig_pbmc_pf_tx_tsne.log",
   benchmark:
-    "output/figures/umap_hs_cd45p_live_singlet_spleen_pbmc_benchmark.txt",
+    "output/figures/fig_pbmc_pf_tx_tsne_benchmark.txt",
   resources:
-    mem_mb=60000,
+    mem_mb=16000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_hs_cd45p_live_singlet_wrefpbmc_umap_pbmc_spleen.R {input.hs_cd45p_spleen_pbmc_seuratobject_rds} {output.umap_hs_cd45p_live_singlet_spleen_pbmc_pdf} &> {log}
+    Rscript --vanilla workflow/scripts/figures/fig_tsne_pbmc_pf_tx.R {input.pbmc_pf_tx_paired_seuratobject_rds} {output.tsne_pbmc_pf_tx_df_csv} {output.tsne_pbmc_pf_tx_fig1_svg} {output.tsne_pbmc_pf_tx_fig2_svg} {output.tsne_pbmc_pf_tx_fig3_svg} &> {log}
     """
 
-rule hs_cd45p_live_singlet_wrefpbmc_umap_pbmc
+rule fig_boxplot_pf_tx_l3rl2:
+  input:
+    tx_seuratobject_rds="output/subsets/tx_SeuratObject.Rds",
+  output:
+    boxplot_pf_tx_l3rl2_df_csv="output/figures/fig_boxplot_pf_tx_l3rl2.csv",
+    boxplot_pf_tx_l3rl2_svg="output/figures/fig_boxplot_pf_tx_l3rl2.svg",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/figures/fig_boxplot_pf_tx_l3rl2.log",
+  benchmark:
+    "output/figures/fig_boxplot_pf_tx_l3rl2_benchmark.txt",
+  resources:
+    mem_mb=16000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/figures/fig_boxplot_pf_tx_l3rl2.R "{input.tx_seuratobject_rds}" "{output.boxplot_pf_tx_l3rl2_df_csv}" "{output.boxplot_pf_tx_l3rl2_svg}" &> "{log}"
+    """
 
-rule hs_cd45p_live_singlet_wrefpbmc_umap_spleen
+rule fig_boxplot_pbmc_pf_l3rl2:
+  input:
+    pbmc_pf_tx_seuratobject_rds="output/subsets/pbmc_pf_tx_SeuratObject.Rds",
+  output:
+    boxplot_pbmc_pf_l3rl2_df_csv="output/figures/fig_boxplot_pbmc_pf_l3rl2.csv",
+    boxplot_pbmc_pf_l3rl2_svg="output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/figures/fig_boxplot_pbmc_pf_l3rl2.log",
+  benchmark:
+    "output/figures/fig_boxplot_pbmc_pf_l3rl2_benchmark.txt",
+  resources:
+    mem_mb=16000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/figures/fig_boxplot_pbmc_pf_l3rl2.R "{input.pbmc_pf_tx_seuratobject_rds}" "{output.boxplot_pbmc_pf_l3rl2_df_csv}" "{output.boxplot_pbmc_pf_l3rl2_svg}" &> "{log}"
+    """
 
-rule_hs_cd45p_live_singlet_wrefpbmc_abundance_boxplot
-
-rule_hs_cd45p_live_singlet_wrefpbmc_abundance_heatmap
-
-rule_hs_cd45p_live_singlet_wrefpbmc_expression_heatmap
-
+rule fig_heatmap_cd4t_markers:
+  input:
+    pbmc_pf_tx_seuratobject_rds="output/subsets/pbmc_pf_tx_SeuratObject.Rds",
+    markers_csv=config["markers"],
+  output:
+    heatmap_cd4t_markers_svg="output/figures/fig_heatmap_cd4t_markers.svg",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/figures/fig_heatmap_cd4t_markers.log",
+  benchmark:
+    "output/figures/fig_heatmap_cd4t_markers_benchmark.txt",
+  resources:
+    mem_mb=16000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/figures/fig_heatmap_markers_cd4t.R {input.pbmc_pf_tx_seuratobject_rds} {input.markers_csv} {output.heatmap_cd4t_markers_svg} &> {log}
+    """

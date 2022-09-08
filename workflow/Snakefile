@@ -24,32 +24,38 @@ fastq_df = fastq_df.drop_duplicates()
 
 runs = sample_files['Run_ID']
 
-celltypes=["Macrophages C1Q+", "Macrophages FN1+", "Macrophages SPP1+", "CD4 Treg memory"]
+levels = ["manual_l1","manual_l2","manual_l3","manual_l4"]
+relative_levels = ["manual_l1rNULL", "manual_l2rNULL", "manual_l3rNULL", "manual_l4rNULL", "manual_l2rmanual_l1", "manual_l3rmanual_l1", "manual_l4rmanual_l1", "manual_l3rmanual_l2", "manual_l4rmanual_l2", "manual_l4rmanual_l3"]
+sample_objects = ["pbmc_pf_tx","pbmc_pf_tx_paired"]
+tissue_comparisons = ["PFvPBMC","TXvPF","TXvPBMC"]
 
 include: "rules/resources.smk"
 include: "rules/cellranger.smk"
-include: "rules/r.smk"
-#include: "rules/scrublet.smk"
-#include: "rules/ambiant.smk"
+include: "rules/preparation.smk"
+include: "rules/subsetting.smk"
+include: "rules/analyses.smk"
+include: "rules/figures.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
   
 rule all:
   input:
+    #Preparation
     #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
     #expand("output/cellranger/{run}", run=runs),
     #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
     #"output/merged/merged_SeuratObject.Rds",
     #"output/curated/curated_SeuratObject.Rds",
     #"output/tx/tx_SeuratObject.Rds",
+    #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
+    #Analyses
+    expand("output/analyses/{sample_object}/de/{tissue_comparison}/{level}/{tissue_comparison}_{level}_{sample_object}_deseq2_results.Rds", sample_object=sample_objects, tissue_comparison=tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    expand("output/analyses/{sample_object}/de/pmpvpmn/{level}/pmpvpmn_{tissue}_{level}_{sample_object}_deseq2_results.Rds", sample_object=sample_objects, level=levels, tissue=["PBMC","PF"]),
+    expand("output/analyses/{sample_object}/da/{tissue_comparison}/{tissue_comparison}_{relative_level}_{sample_object}_propeller_results.Rds", sample_object=sample_objects, relative_level=relative_levels, tissue_comparison=tissue_comparisons),
+    #Figures
     "output/figures/fig_boxplot_tx_l3rl2.svg",
     "output/figures/fig_boxplot_pf_tx_l3rl2.svg",
     "output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
-    #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
+    "output/figures/fig_heatmap_cd4t_markers.svg",
     "output/figures/tsne_pbmc_pf_tx.csv",
-    expand("output/pbmc_pf_tx_paired/{celltype}/{celltype}_degs.csv", celltype=celltypes),
-    
-    
-    #Figures
-    #"output/figures/cells_per_organism/cells_per_organism_raw_df.Rds",

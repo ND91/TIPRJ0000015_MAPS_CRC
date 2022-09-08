@@ -27,4 +27,12 @@ DimPlot(CD4tregs,group.by = "manual_l4")
 
 pheatmap::pheatmap(prop.table(table(CD4tregs@meta.data$SampleID, CD4tregs@meta.data$manual_l4), 2), display_numbers = T)
 
-CD4tregs@meta.data
+cd4treg_anno <- CD4tregs@meta.data[,c("cellID", "manual_l1", "manual_l2", "manual_l3", "manual_l4")]
+
+complete_anno <- read.csv(file.path("config", "annotations", "celltype_annotations.csv"))[,-1]
+
+complete_anno_sub <- complete_anno[-which(complete_anno$cellID %in% cd4treg_anno$cellID),]
+
+complete_anno_new <- rbind(complete_anno_sub, cd4treg_anno)
+
+write.csv(complete_anno_new, file.path("config", "annotations", "celltype_annotations.csv"), row.names = F)

@@ -15,7 +15,7 @@ curated_annotations_csv_path <- args[2]
 seurat_curated_rds_path <- args[3]
 
 seuratObject <- readRDS(seurat_rds_path)
-curated_annotations <- read.csv(curated_annotations_csv_path)[,-1]
+curated_annotations <- read.csv(curated_annotations_csv_path)
 
 seuratObject@meta.data <- seuratObject@meta.data %>%
   dplyr::mutate(cellID = rownames(.)) %>%
