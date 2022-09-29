@@ -21,7 +21,8 @@ discard_cellIDs <- unique(c(grep("multiplet", seuratObject@meta.data$manual_l1, 
                             grep("unknown", seuratObject@meta.data$manual_l1, ignore.case = T),
                             grep("endothelial", seuratObject@meta.data$manual_l1, ignore.case = T),
                             grep("epithelial", seuratObject@meta.data$manual_l1, ignore.case = T),
-                            grep("mesenchymal", seuratObject@meta.data$manual_l1, ignore.case = T)
+                            grep("mesenchymal", seuratObject@meta.data$manual_l1, ignore.case = T),
+                            grep("CRC\\+", seuratObject@meta.data$Group, ignore.case = T)
                           ))
 seuratObject <- seuratObject[,-discard_cellIDs]
 
@@ -30,10 +31,10 @@ seuratObject <- DietSeurat(seuratObject, counts = T, data = T, scale.data = F)
 seuratObject <- seuratObject[Matrix::rowSums(seuratObject) != 0, ]
 
 seuratObject <- SCTransform(seuratObject, conserve.memory = T)
-seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 19462378)
-seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:46)
+seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 978435)
+seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:45)
 seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
-seuratObject <- RunTSNE(seuratObject, dims = 1:46, seed.use = 431241)
+seuratObject <- RunTSNE(seuratObject, dims = 1:45, seed.use = 4312432)
 
 # Save data
 saveRDS(seuratObject, pbmc_pf_tx_seurat_rds_path, compress = "gzip")

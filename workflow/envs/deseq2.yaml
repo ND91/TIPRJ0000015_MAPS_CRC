@@ -6,4 +6,5 @@ channels:
 dependencies:
   - r-seurat=4.1.1
   - r-matrix=1.4_1
+  - r-devtools=2.4.4
   - bioconductor-deseq2=1.34.0

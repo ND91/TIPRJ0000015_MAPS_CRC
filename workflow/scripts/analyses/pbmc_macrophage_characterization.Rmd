@@ -1,0 +1,471 @@
+---
+title: "Macrophage characterization"
+author: "Andrew Y.F. Li Yim"
+date: '2022-09-13'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+In this document, we seek to characterize the macrophage-like cells found in PBMCs. 
+
+```{r libraries, include=FALSE}
+library(Seurat)
+library(dplyr)
+library(DESeq2)
+library(ggplot2)
+library(ggrastr)
+library(ggrepel)
+library(ggpubr)
+library(svglite)
+```
+
+Visualizing the myeloid compartment from PBMC and PF, we observe macrophage-like cells in the PBMC fraction. This is surprising as macrophages can typically only be found in tissue and not in circulation.
+
+```{r myeloid preparation}
+seurat_myeloid_rds_path <- file.path("..", "..", "..", "output", "subsets", "pbmc_pf_myeloid_SeuratObject.Rds")
+
+myeloid_seuratObject <- readRDS(seurat_myeloid_rds_path)
+
+myeloid_markers <- c("CD14", "FCGR3A", "CD163", "MARCO", "CD68", "CD1C")
+
+myeloid_seuratObject_tsne_df <- data.frame(Embeddings(myeloid_seuratObject[["tsne"]]),
+                                           myeloid_seuratObject@meta.data,
+                                           t(as.matrix(GetAssayData(myeloid_seuratObject)[myeloid_markers,]))) %>%
+  dplyr::filter(!manual_l2 %in% c("Granulocytes", "Platelets", "DC proliferating")) %>%
+  dplyr::mutate(manual_l4 = ifelse(manual_l4 == "Macrophages VCAN+CD163-", "Macrophages VCAN+", manual_l4),
+                manual_l2_number = as.numeric(as.factor(manual_l2)),
+                manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
+                manual_l3_number = as.numeric(as.factor(manual_l3)),
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
+                manual_l4_number = as.numeric(as.factor(manual_l4)),
+                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4),
+                Group1 = factor(ifelse(Group == "HC", "HC", "CRC"), levels = c("CRC", "HC")),
+                Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+")))
+```
+
+```{r figure tSNE col_manual_l2 split_tissue}
+fig1 <- myeloid_seuratObject_tsne_df %>%
+  dplyr::filter(Group != "HC") %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = myeloid_seuratObject_tsne_df %>%
+                     dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "PF and PBMCs from CRC patients") +
+  facet_grid(.~Tissue) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+
+svglite(width = 10, height = 5, file = "fig1.svg", bg = "white")
+pdf(file = "fig1.pdf", width = 15, height = 7.5)
+print(fig1)
+dev.off()
+```
+
+We therefore would want to confirm that these macrophage-like cells are indeed macrophages by interrogating the expression of canonical macrophage markers.
+
+```{r figure tSNE markers}
+fig2_list <- lapply(myeloid_markers, function(marker_gene){
+  myeloid_seuratObject_tsne_df %>%
+    dplyr::filter(Group != "HC") %>%
+    ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+    geom_point_rast(show.legend = F, size = 2, col = "black") +
+    geom_point_rast(show.legend = T, size = 1, aes_string(col = marker_gene, alpha = marker_gene)) +
+    labs(y = "",
+         x = "") +
+    geom_label_repel(data = myeloid_seuratObject_tsne_df %>%
+                       dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                       summarize(x = median(x = tSNE_1),
+                                 y = median(x = tSNE_2)),
+                     mapping = aes(label = manual_l2_number, x = x, y = y),
+                     alpha = 1, 
+                     show.legend = F) +
+    labs(subtitle = marker_gene) +
+    #facet_grid(.~Tissue) +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.pos = "bottom",
+          legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          strip.text.x = element_text(face = "bold"),
+          strip.text.y = element_text(face = "bold"))
+})
+
+fig2 <- ggarrange(plotlist = fig2_list, nrow = 3, ncol = 2)
+
+svglite(width = 20, height = 10, file = fig2_svg_path, bg = "white")
+pdf(file = "fig2.pdf", width = 15, height = 7.5*3)
+print(fig2)
+dev.off()
+```
+
+```{r boxplot jitterplot myeloid markers per manual_l2}
+myeloid_seuratObject_tsne_df %>%
+  dplyr::select(manual_l2, Tissue, CD14, FCGR3A, CD163, MARCO, CD68, CD1C) %>%
+  tidyr::pivot_longer(-c(manual_l2, Tissue), names_to = "celltype", values_to = "nUMIs") %>%
+  ggplot(aes(x = Tissue, y = nUMIs)) +
+  geom_jitter_rast(alpha = 0.1) +
+  geom_boxplot(alpha = 0.75, outlier.shape = NA) +
+  facet_grid(celltype~manual_l2) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+```
+
+I don't get very confident that conventional markers can define these PBMC-derived macrophage-like cells from monocytes. 
+
+```{r figure PBMC tSNE col_manual_l2 split_group}
+fig3 <- myeloid_seuratObject_tsne_df %>%
+  #dplyr::filter(Tissue == "PBMC") %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = myeloid_seuratObject_tsne_df %>%
+                     dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "PBMCs from HC and CRC patients") +
+  facet_wrap(~Group2, nrow = 1, ncol = 3) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+svglite(width = 15, height = 5, file = fig3_svg_path, bg = "white")
+pdf(file = "fig3.pdf", width = 7.5*3, height = 7.5)
+print(fig3)
+dev.off()
+```
+
+```{r figure boxplot abundance macrophages l2rl1 per tissue}
+myeloid_CRCvHC_da <- myeloid_seuratObject_tsne_df %>%
+  dplyr::filter(Tissue == "PBMC") %>%
+  propeller(sample = .$SampleID, clusters = .$manual_l2, group = .$Group1)
+
+myeloid_CRCpvCRCn_da <- myeloid_seuratObject_tsne_df %>%
+  dplyr::filter(Tissue == "PBMC",
+                Group != "HC") %>%
+  dplyr::mutate(Group2 = as.factor(as.character(Group2))) %>%
+  propeller(sample = .$SampleID, clusters = .$manual_l2, group = .$Group2)
+
+fig4 <- data.frame(table(myeloid_seuratObject_tsne_df$manual_l2, myeloid_seuratObject_tsne_df$SampleID)) %>%
+  dplyr::rename(manual_l2 = Var1,
+                SampleID = Var2) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Total = sum(Freq),
+                Proportion = Freq/Total) %>%
+  dplyr::left_join(unique(myeloid_seuratObject_tsne_df[,c("SampleID", "Group", "Tissue")]), by = "SampleID") %>%
+  dplyr::filter(manual_l2 == "Macrophages",
+                Tissue == "PBMC") %>%
+  dplyr::mutate(Group = factor(Group, levels = c("HC", "CRC-", "CRC+"))) %>%
+  ggplot(aes(x = Group, y = Proportion)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(alpha = 0.5) +
+  labs(title = "Proportion macrophages relative to MNP",
+       subtitle = paste0("p-value CRC vs HC = ", formatC(myeloid_CRCvHC_da$P.Value[1], digits = 2, format = "e"), "\np-value CRC+ vs CRC- = ", round(myeloid_CRCpvCRCn_da$P.Value[3], 3))) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+svglite(width = 5, height = 5, file = fig4_svg_path, bg = "white")
+pdf(file = "fig4.pdf", width = 7.5, height = 7.5)
+print(fig4)
+dev.off()
+```
+
+Having confirmed that the proportional representation of PBMC-derived macrophages is larger in patients with CRC, regardless of the presence or absence of peritoneal metastasis, we next sought to characterize what kind of macrophages were present in the PBMC relative to what was observed in PF and TX. Our reasoning being that
+
+```{r macrophages preparation}
+macrophages_seuratObject <- readRDS(file.path("..", "..", "..", "output", "subsets", "pbmc_pf_macrophages_SeuratObject.Rds"))
+
+macrophages_markers <- c("CD163", "C1QC", "FN1", "IL10", "TGFB1", "ACTB", "SPP1", "VCAN", "GATA6")
+
+macrophages_seuratObject_tsne <- data.frame(Embeddings(macrophages_seuratObject[["tsne"]]),
+                                                  macrophages_seuratObject@meta.data,
+                                               t(as.matrix(GetAssayData(macrophages_seuratObject)[macrophages_markers,]))) %>%
+  dplyr::mutate(manual_l4 = ifelse(manual_l4 == "Macrophages VCAN+CD163-", "Macrophages VCAN+", manual_l4),
+                manual_l2_number = as.numeric(as.factor(manual_l2)),
+                manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
+                manual_l3_number = as.numeric(as.factor(manual_l3)),
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
+                manual_l4_number = as.numeric(as.factor(manual_l4)),
+                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4),
+                Group1 = factor(ifelse(Group == "HC", "HC", "CRC"), levels = c("CRC", "HC")),
+                Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+")))
+```
+
+```{r figure macrophages tSNE col_manual_l4 split_group}
+fig5_list <- lapply(macrophages_markers, function(marker_gene){
+  macrophages_seuratObject_tsne %>%
+    dplyr::filter(Group != "HC") %>%
+    ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+    geom_point_rast(show.legend = F, size = 2, col = "black") +
+    geom_point_rast(show.legend = T, size = 1, aes_string(col = marker_gene, alpha = marker_gene)) +
+    labs(y = "",
+         x = "") +
+    geom_label_repel(data = macrophages_seuratObject_tsne %>%
+                       dplyr::group_by(manual_l4_number, manual_l4_w_number) %>%
+                       summarize(x = median(x = tSNE_1),
+                                 y = median(x = tSNE_2)),
+                     mapping = aes(label = manual_l4_number, x = x, y = y),
+                     alpha = 1, 
+                     show.legend = F) +
+    labs(subtitle = marker_gene) +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.pos = "bottom",
+          legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          strip.text.x = element_text(face = "bold"),
+          strip.text.y = element_text(face = "bold"))
+})
+
+fig5 <- ggarrange(plotlist = fig5_list, nrow = 3, ncol = 3)
+
+svglite(width = 15, height = 15, file = fig5_svg_path, bg = "white")
+pdf(file = "fig5.pdf", width = 7.5*3, height = 7.5*3)
+print(fig5)
+dev.off()
+```
+
+```{r figure macrophages tSNE col_manual_l4 split_tissue}
+fig6 <- macrophages_seuratObject_tsne %>%
+  #dplyr::filter(Group != "HC") %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l4_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = macrophages_seuratObject_tsne %>%
+                     dplyr::group_by(manual_l4_number, manual_l4_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l4_number, x = x, y = y, col = manual_l4_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "Macrophages") +
+  facet_grid(.~Tissue) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+
+svglite(width = 10, height = 5, file = fig6_svg_path, bg = "white")
+pdf(file = "fig6.pdf", width = 7.5*2, height = 7.5)
+print(fig6)
+dev.off()
+```
+
+```{r figure macrophages tSNE col_manual_l4 split_Group1}
+fig7 <- macrophages_seuratObject_tsne %>%
+  dplyr::filter(Tissue == "PBMC") %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l4_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = macrophages_seuratObject_tsne %>%
+                     dplyr::group_by(manual_l4_number, manual_l4_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l4_number, x = x, y = y, col = manual_l4_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "PBMC-derived macrophages") +
+  facet_grid(.~Group1) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+
+svglite(width = 10, height = 5, file = fig7_svg_path, bg = "white")
+pdf(file = "fig7.pdf", width = 7.5, height = 7.5)
+print(fig7)
+dev.off()
+```
+
+```{r figure macrophages tSNE col_manual_l4 split_Group1}
+fig8 <- macrophages_seuratObject_tsne %>%
+  dplyr::filter(Tissue == "PBMC") %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l4_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = macrophages_seuratObject_tsne %>%
+                     dplyr::group_by(manual_l4_number, manual_l4_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l4_number, x = x, y = y, col = manual_l4_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "PBMC-derived macrophages") +
+  facet_grid(.~Group2) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+
+svglite(width = 10, height = 5, file = fig8_svg_path, bg = "white")
+pdf(file = "fig8.pdf", width = 15, height = 7.5)
+print(fig8)
+dev.off()
+```
+
+```{r figure boxplot abundance macrophages l4rl2 per tissue}
+macrophages_subsets_CRCpvCRCn_da <- macrophages_seuratObject_tsne %>%
+  dplyr::filter(Tissue == "PBMC",
+                Group != "HC") %>%
+  dplyr::mutate(Group2 = as.factor(as.character(Group2))) %>%
+  propeller(sample = .$SampleID, clusters = .$manual_l4, group = .$Group2)
+
+fig9 <- data.frame(table(macrophages_seuratObject_tsne$manual_l4, macrophages_seuratObject_tsne$SampleID)) %>%
+  dplyr::rename(manual_l4 = Var1,
+                SampleID = Var2) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Total = sum(Freq),
+                Proportion = Freq/Total) %>%
+  dplyr::left_join(unique(macrophages_seuratObject_tsne[,c("SampleID", "Group", "Tissue")]), by = "SampleID") %>%
+  dplyr::mutate(Group = factor(Group, levels = c("CRC-", "CRC+"))) %>%
+  dplyr::filter(Tissue == "PBMC") %>%
+  dplyr::left_join(macrophages_subsets_CRCpvCRCn_da, by = c("manual_l4" = "BaselineProp.clusters")) %>%
+  dplyr::mutate(label = paste0(manual_l4, "\np-value = ", round(P.Value, 3))) %>%
+  ggplot(aes(x = Group, y = Proportion)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(alpha = 0.5) +
+  labs(title = "Proportion PBMC macrophages subsets relative to all macrophages") +
+  facet_wrap(~label, nrow = 2, ncol = 4, scales = "free_y") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+svglite(width = 10, height = 5, file = fig7_svg_path, bg = "white")
+pdf(file = "fig9.pdf", width = 15, height = 7.5)
+print(fig9)
+dev.off()
+```
+
+## C1Q macrophage characterization
+
+```{r}
+pbmc_pf_tx_seuratObject <- readRDS("/media/hdd1/andrewliyim/maps_crc/output/subsets/pbmc_pf_tx_SeuratObject.Rds")
+
+macrophagec1q_paired_seuratObject <- pbmc_pf_tx_seuratObject[,pbmc_pf_tx_seuratObject@meta.data$manual_l4 == "Macrophages C1Q+" & pbmc_pf_tx_seuratObject@meta.data$Donor %in% c("pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt78")]
+macrophagec1q_paired_colData <- unique(macrophagec1q_paired_seuratObject@meta.data[,c("SampleID", "Tissue")])
+rownames(macrophagec1q_paired_colData) <- macrophagec1q_paired_colData$SampleID
+
+macrophagec1q_paired_counts <- GetAssayData(macrophagec1q_paired_seuratObject, slot = "counts")
+macrophagec1q_paired_counts_sample <- macrophagec1q_paired_counts %*% model.matrix(~0+SampleID, data = macrophagec1q_paired_seuratObject@meta.data)
+colnames(macrophagec1q_paired_counts_sample) <- gsub("SampleID", "", colnames(macrophagec1q_paired_counts_sample))
+
+macrophagec1q_paired_counts_sample <- macrophagec1q_paired_counts_sample[which(Matrix::rowSums(macrophagec1q_paired_counts_sample) != 0),]
+
+macrophagec1q_paired_dds <- DESeqDataSetFromMatrix(countData = macrophagec1q_paired_counts_sample,
+                                             colData = macrophagec1q_paired_colData[colnames(macrophagec1q_paired_counts_sample),],
+                                             design = ~Tissue)
+macrophagec1q_paired_dds <- DESeq(macrophagec1q_paired_dds)
+macrophagec1q_paired_rld <- rlog(macrophagec1q_paired_dds)
+
+macrophagec1q_txvpf_degs <- read.csv("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/TXvPF/manual_l4/TXvPF_manual_l4_pbmc_pf_tx_Macrophages_C1Qp.csv")
+
+pdf("macrophagec1q_goi.pdf", width = 12, height = 3)
+assay(macrophagec1q_paired_rld)[c("THBS1", "MRC1", "IGF1", "CXCR4"),] %>%
+  data.frame(., GeneID = rownames(.)) %>%
+  tidyr::pivot_longer(-GeneID, names_to = "SampleID", values_to = "Expr") %>%
+  dplyr::left_join(macrophagec1q_paired_colData, by = "SampleID") %>%
+  dplyr::left_join(macrophagec1q_txvpf_degs, by = c("GeneID" = "gene")) %>%
+  dplyr::mutate(label = paste0(GeneID, "\np-value = ", formatC(pvalue, digits = 2, format = "e"))) %>%
+  ggplot(aes(x = Tissue, y = Expr)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  labs(y = bquote(log[2]~"(expression)")) +
+  facet_wrap(~label, nrow = 1) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.x = element_blank())
+dev.off()
+
+```
+
+### Comparing PF with TX
+
+
+
+
+```{r}
+degs_pfvtx_c1qmacrophages <- read.csv("/")
+```
+
+
+### Comparing PF: PM+ with PM-
+

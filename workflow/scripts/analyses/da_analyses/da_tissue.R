@@ -14,7 +14,8 @@ if (length(args) != 5) {
 seurat_rds_path <- args[1]
 propeller_list_path <- args[2]
 relative <- unlist(strsplit(args[3], "r")) #This is why we need to use the "r" as separator
-tissue_comparison <- unlist(strsplit(args[4], "v"))  #This is why we need to use the "v" as separator
+group_tissue <- unlist(strsplit(args[4], "_")) 
+tissue_comparison <- unlist(strsplit(group_tissue[2], "v")) #This is why we need to use the "v" as separator
 functions_r_path <- args[5]
 
 source(functions_r_path)
@@ -27,7 +28,9 @@ tissue_control <- tissue_comparison[2]
 
 seuratObject <- readRDS(seurat_rds_path)
 
-seuratObject <- seuratObject[,seuratObject@meta.data$Tissue %in% c(tissue_case, tissue_control)]
+group <- ifelse(group_tissue[1] == "PMp", "PM+", "PM-")
+
+seuratObject <- seuratObject[,seuratObject@meta.data$Tissue %in% c(tissue_case, tissue_control) & seuratObject@meta.data$Metastasis == group]
 
 if(level_parent == "NULL"){
   propeller_list <- seuratDA(seuratobj = seuratObject, 

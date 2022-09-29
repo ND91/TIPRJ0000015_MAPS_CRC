@@ -26,8 +26,10 @@ runs = sample_files['Run_ID']
 
 levels = ["manual_l1","manual_l2","manual_l3","manual_l4"]
 relative_levels = ["manual_l1rNULL", "manual_l2rNULL", "manual_l3rNULL", "manual_l4rNULL", "manual_l2rmanual_l1", "manual_l3rmanual_l1", "manual_l4rmanual_l1", "manual_l3rmanual_l2", "manual_l4rmanual_l2", "manual_l4rmanual_l3"]
-sample_objects = ["pbmc_pf_tx","pbmc_pf_tx_paired"]
-tissue_comparisons = ["PFvPBMC","TXvPF","TXvPBMC"]
+tissue_sample_objects = ["pbmc_pf_tx","pbmc_pf_tx_cleaned_cd45p","pbmc_pf_tx_paired"]
+pm_sample_objects = ["pbmc_pf_tx","pbmc_pf_tx_cleaned_cd45p"]
+tissue_comparisons = ["PMp_PFvPBMC","PMp_TXvPF","PMp_TXvPBMC", "PMn_PFvPBMC"]
+tissues=["PBMC","PF"]
 
 include: "rules/resources.smk"
 include: "rules/cellranger.smk"
@@ -38,10 +40,15 @@ include: "rules/figures.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
+  relative_level='|'.join([re.escape(x) for x in relative_levels]),
+  tissue_sample_object='|'.join([re.escape(x) for x in tissue_sample_objects]),
+  pm_sample_object='|'.join([re.escape(x) for x in pm_sample_objects]),
+  tissue_comparison='|'.join([re.escape(x) for x in tissue_comparisons]),
+  tissue='|'.join([re.escape(x) for x in tissues]),
   
 rule all:
   input:
-    #Preparation
+    #Preparation (DEBUGGING)
     #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
     #expand("output/cellranger/{run}", run=runs),
     #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
@@ -50,9 +57,15 @@ rule all:
     #"output/tx/tx_SeuratObject.Rds",
     #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
     #Analyses
-    expand("output/analyses/{sample_object}/de/{tissue_comparison}/{level}/{tissue_comparison}_{level}_{sample_object}_deseq2_results.Rds", sample_object=sample_objects, tissue_comparison=tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    expand("output/analyses/{sample_object}/de/pmpvpmn/{level}/pmpvpmn_{tissue}_{level}_{sample_object}_deseq2_results.Rds", sample_object=sample_objects, level=levels, tissue=["PBMC","PF"]),
-    expand("output/analyses/{sample_object}/da/{tissue_comparison}/{tissue_comparison}_{relative_level}_{sample_object}_propeller_results.Rds", sample_object=sample_objects, relative_level=relative_levels, tissue_comparison=tissue_comparisons),
+    expand("output/analyses/{tissue_sample_object}/de/{tissue_comparison}/{level}/{tissue_comparison}_{level}_{tissue_sample_object}_deseq2_results.Rds", tissue_sample_object=tissue_sample_objects, tissue_comparison=tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    expand("output/analyses/{tissue_sample_object}/de/{tissue_comparison}/{level}/{tissue_comparison}_{level}_{tissue_sample_object}_deseq2_results.Rds", tissue_sample_object=tissue_sample_objects, tissue_comparison=tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    expand("output/analyses/{pm_sample_object}/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_{pm_sample_object}_deseq2_results.Rds", pm_sample_object=pm_sample_objects, level=levels, tissue=tissues),
+    expand("output/analyses/{tissue_sample_object}/da/{tissue_comparison}/{tissue_comparison}_{relative_level}_{tissue_sample_object}_propeller_results.Rds", tissue_sample_object=tissue_sample_objects, relative_level=relative_levels, tissue_comparison=tissue_comparisons),
+    expand("output/analyses/{pm_sample_object}/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_{pm_sample_object}_propeller_results.Rds", pm_sample_object=pm_sample_objects, relative_level=relative_levels, tissue=tissues),
+    #Subsets
+    "output/subsets/pbmc_pf_myeloid_SeuratObject.Rds",
+    "output/subsets/pbmc_pf_macrophages_SeuratObject.Rds",
+    "output/subsets/pbmc_pf_tx_t_SeuratObject.Rds",
     #Figures
     "output/figures/fig_boxplot_tx_l3rl2.svg",
     "output/figures/fig_boxplot_pf_tx_l3rl2.svg",

@@ -1,26 +1,18 @@
 #!/usr/bin/env Rscript
-# This script will generate the following plots from the PBMC, PF, and TX tissue samples obtained from donors that provided all.
-# 1. A tSNE plot of all cells together colored by tissue.
-# 2. A tSNE plot of all cells together facetted by tissue, colored by manual_l2.
-# 3. A tSNE plot of all cells facetted by manual_l1, colored by manual_l3.
+# This script will generate volcanoplots plotting the pseudobulk DE analyses comparing TX with PF .
 
-suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggrastr))
 suppressPackageStartupMessages(library(ggrepel))
-suppressPackageStartupMessages(library(svglite))
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 5) {
   stop(paste0("Script needs 5 arguments. Current input is:", args))
 }
 
-seurat_rds_path <- args[1]
-plot_df_csv_path <- args[2]
+degs_path <- args[1]
 fig1_svg_path <- args[3]
-fig2_svg_path <- args[4]
-fig3_svg_path <- args[5]
 
 seuratObject <- readRDS(seurat_rds_path)
 
@@ -29,26 +21,46 @@ seuratObject_metadata_tsne <- data.frame(Embeddings(seuratObject[["tsne"]]),
   dplyr::mutate(manual_l2_number = as.numeric(as.factor(manual_l2)),
                 manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
                 manual_l3_number = as.numeric(as.factor(manual_l3)),
-                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
-                manual_l4_number = as.numeric(as.factor(manual_l4)),
-                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4))
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3))
 
-# 1.  A tSNE plot of all cells together facetted by tissue, colored by manual_l2.
+write.csv(seuratObject_metadata_tsne, plot_df_csv_path)
 
-fig1 <- ggplot(seuratObject_metadata_tsne, aes(x = tSNE_1, y = tSNE_2)) +
-  geom_point_rast(show.legend = T, size = 2, col = "black") +
-  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+# 1. A tSNE plot of all cells together colored by tissue.
+
+fig1 <- ggplot(seuratObject_metadata_tsne, aes(x = tSNE_1, y = tSNE_2, col = Tissue)) +
+  geom_point_rast(show.legend = T, size = 0.1) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank()
+        )
+
+svglite(width = 7.5, height = 7.5, file = fig1_svg_path, bg = "white", units = "px", dpi = 120)
+print(fig1)
+dev.off()
+
+# 2. A tSNE plot of all cells together facetted by tissue, colored by manual_l2.
+
+fig2 <- ggplot(seuratObject_metadata_tsne, aes(x = tSNE_1, y = tSNE_2, col = manual_l2_w_number)) +
+  geom_point_rast(show.legend = T, size = 0.1) +
   labs(y = "",
        x = "") +
   geom_label_repel(data = seuratObject_metadata_tsne %>%
                      dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
                      summarize(x = median(x = tSNE_1),
                                y = median(x = tSNE_2)),
-                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
-                   alpha = 1, 
+                   mapping = aes(label = manual_l2_number, x = x, y = y),
+                   alpha = 0.9, 
                    show.legend = F) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
-  facet_wrap(~Tissue, nrow = 1, ncol = 2) +
+  facet_wrap(~Tissue, nrow = 1, ncol = 3) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -61,7 +73,7 @@ fig1 <- ggplot(seuratObject_metadata_tsne, aes(x = tSNE_1, y = tSNE_2)) +
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-svglite(width = 22.5, height = 7.5, file = fig2_svg_path, bg = "white")
+svglite(width = 22.5, height = 7.5, file = fig1_svg_path, bg = "white", units = "px", dpi = 120)
 print(fig2)
 dev.off()
 
@@ -69,16 +81,15 @@ dev.off()
 
 fig3 <- seuratObject_metadata_tsne %>%
   dplyr::filter(manual_l1 %in% c("T", "B", "NK/ILC", "Myeloid")) %>%
-  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
-  geom_point_rast(show.legend = T, size = 2, col = "black") +
-  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  ggplot(aes(x = tSNE_1, y = tSNE_2, col = manual_l2_w_number)) +
+  geom_point_rast(show.legend = T, size = 0.1) +
   labs(y = "",
        x = "") +
   geom_label_repel(data = seuratObject_metadata_tsne %>%
                      dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
                      summarize(x = median(x = tSNE_1),
                                y = median(x = tSNE_2)),
-                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   mapping = aes(label = manual_l2_number, x = x, y = y),
                    alpha = 0.9, 
                    show.legend = F) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
@@ -95,12 +106,6 @@ fig3 <- seuratObject_metadata_tsne %>%
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-svglite(width = 4*7.5, height = 7.5, file = fig3_svg_path, bg = "white")
+svglite(width = 4*7.5, height = 7.5, file = fig1_svg_path, bg = "white", units = "px", dpi = 120)
 print(fig3)
-dev.off()
-
-Idents(seuratObject) <- "manual_l2"
-
-svglite::svglite(width = 15, height = 30, file = "tsne_pbmc_pf_tx_ccl3_ccl4_ccl17_ccl20_ccl22.svg", bg = "white")
-FeaturePlot(seuratObject, c("CCL3", "CCL4", "CCL17", "CCL20", "CCL22"), label = T, raster = T, split.by = "Tissue")
 dev.off()

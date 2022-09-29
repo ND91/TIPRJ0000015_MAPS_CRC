@@ -16,9 +16,9 @@ pbmc_pf_tx_seurat_rds_path <- args[2]
 seuratObject <- readRDS(seurat_rds_path)
 
 discard_cellIDs <- unique(c(grep("multiplet", seuratObject@meta.data$manual_l4, ignore.case = T), 
-                            grep("proliferating", seuratObject@meta.data$manual_l4, ignore.case = T), 
-                            grep("dead/debris", seuratObject@meta.data$manual_l4, ignore.case = T),
-                            grep("unknown", seuratObject@meta.data$manual_l4, ignore.case = T),
+                            grep("proliferating", seuratObject@meta.data$manual_l1, ignore.case = T), 
+                            grep("dead/debris", seuratObject@meta.data$manual_l1, ignore.case = T),
+                            grep("unknown", seuratObject@meta.data$manual_l1, ignore.case = T)
                           ))
 seuratObject <- seuratObject[,-discard_cellIDs]
 
@@ -27,10 +27,10 @@ seuratObject <- DietSeurat(seuratObject, counts = T, data = T, scale.data = F)
 seuratObject <- seuratObject[Matrix::rowSums(seuratObject) != 0, ]
 
 seuratObject <- SCTransform(seuratObject, conserve.memory = T)
-seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 19462378)
-seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:76)
+seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 67891)
+seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:65)
 seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
-seuratObject <- RunTSNE(seuratObject, dims = 1:76, seed.use = 431241)
+seuratObject <- RunTSNE(seuratObject, dims = 1:65, seed.use = 74532)
 
 # Save data
 saveRDS(seuratObject, pbmc_pf_tx_seurat_rds_path, compress = "gzip")

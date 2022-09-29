@@ -1,0 +1,357 @@
+---
+title: "T exhaustion"
+author: "Andrew Y.F. Li Yim"
+date: '2022-09-13'
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+In this document, we seek to understand whether the T cells from PBMCs, PF, and TX present a different expression profile of genes associated with T cell exhaustion when comparing the tissues.
+
+```{r libraries, include=FALSE}
+library(Seurat)
+library(dplyr)
+library(DESeq2)
+library(ggplot2)
+library(ggrastr)
+library(ggrepel)
+library(ggpubr)
+library(svglite)
+```
+
+Visualizing the T cells from PBMC and PF.
+
+```{r t preparation}
+#t_seuratObject <- readRDS(file.path("..", "..", "..", "output", "subsets", "pbmc_pf_tx_t_SeuratObject.Rds"))
+t_seuratObject <- readRDS("/media/hdd1/andrewliyim/maps_crc/output/subsets/pbmc_pf_tx_t_SeuratObject.Rds")
+
+t_exhaustion_markers <- c("PDCD1", "CTLA4", "HAVCR2", "LAG3", "TIGIT")
+
+t_seuratObject_tsne_df <- data.frame(Embeddings(t_seuratObject[["tsne"]]),
+                                     t_seuratObject@meta.data,
+                                     t(as.matrix(GetAssayData(t_seuratObject)[t_exhaustion_markers,]))) %>%
+  dplyr::filter(!manual_l2 %in% c("T proliferating"),
+                !manual_l3 %in% c("CD8 T memory proliferating")) %>%
+  dplyr::mutate(manual_l2_number = as.numeric(as.factor(manual_l2)),
+                manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
+                manual_l3_number = as.numeric(as.factor(manual_l3)),
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
+                manual_l4_number = as.numeric(as.factor(manual_l4)),
+                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4),
+                Group1 = factor(ifelse(Group == "HC", "HC", "CRC"), levels = c("CRC", "HC")),
+                Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+")))
+```
+
+```{r figure tSNE col_manual_l2 split_tissue, fig.width = 15, fig.height = 5}
+#pdf("t_tsne.pdf", width = 15, height = 5)
+t_seuratObject_tsne_df %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = t_seuratObject_tsne_df %>%
+                     dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "T cells in PF, PBMCs, and TX") +
+  facet_grid(.~Tissue) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+#dev.off()
+```
+
+```{r figure tSNE t exhaustion markers}
+fig_t_exhaustion_markers_list <- lapply(t_exhaustion_markers, function(marker_gene){
+  t_seuratObject_tsne_df %>%
+    ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+    geom_point_rast(show.legend = F, size = 2, col = "black") +
+    geom_point_rast(show.legend = T, size = 1, aes_string(col = marker_gene, alpha = marker_gene)) +
+    labs(y = "",
+         x = "") +
+    geom_label_repel(data = t_seuratObject_tsne_df %>%
+                       dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                       summarize(x = median(x = tSNE_1),
+                                 y = median(x = tSNE_2)),
+                     mapping = aes(label = manual_l2_number, x = x, y = y),
+                     alpha = 1, 
+                     show.legend = F) +
+    labs(subtitle = marker_gene) +
+    facet_grid(.~Tissue) +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.pos = "bottom",
+          legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          strip.text.x = element_text(face = "bold"),
+          strip.text.y = element_text(face = "bold"))
+})
+
+ggarrange(plotlist = fig_t_exhaustion_markers_list, nrow = 5)
+```
+
+```{r figure ballenplot t exhaustion markers, fig.width = 12.5, fig.height = 3.5}
+t_exhaustion_markers_median <- t_seuratObject_tsne_df %>%
+  tidyr::pivot_longer(cols = t_exhaustion_markers, names_to = "GeneID", values_to = "nUMIs") %>%
+  dplyr::group_by(manual_l3, GeneID, Tissue) %>%
+  dplyr::summarize(Median = median(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100)
+
+#pdf("t_median_expression_t_exhaustion.pdf", width = 12.5, height = 3.5)
+t_exhaustion_markers_median %>% 
+  ggplot(aes(x = paste0(manual_l3, " (", Tissue, ")"), y = GeneID, col = Median)) +
+  geom_tile(alpha = 0, col = "grey") +
+  geom_point(aes(size = Percentage)) +
+  theme_bw() +
+  theme(legend.pos = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank())
+#dev.off()
+```
+
+There indeed appear to be particular T cells that present tissue-associated expression of T exhaustion-related markers. The most obvious difference are the CD4 Tregs that appear to express increased CTLA4 in TX relative to PF, which in turn presents an increased expression relative to PBMCs. To better visualize these differences, we performed pseudobulk analyses on each of the T cells and performed all pairwise comparisons
+
+```{r t manual_l3 DE analyses}
+l3_of_interest <- gsub(" ", "_", unique(t_seuratObject_tsne_df$manual_l3))
+
+#PFvPBMC
+pfvpbmc_l3_t_exhaustion <- vector("list", length = length(l3_of_interest))
+names(pfvpbmc_l3_t_exhaustion) <- l3_of_interest
+
+for(l3 in l3_of_interest){
+  #degs <- read.csv(file.path("..", "..", "..", "output", "analyses", "pbmc_pf_tx", "de", "PFvPBMC", "manual_l3", paste0("PFvPBMC_manual_l3_pbmc_pf_tx_", l3, ".csv"))
+  deg_file <- paste0("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/PFvPBMC/manual_l3/PFvPBMC_manual_l3_pbmc_pf_tx_", l3, ".csv")
+  tryCatch(expr = {
+    pfvpbmc_l3_t_exhaustion[[l3]] <- read.csv(deg_file) %>%
+      dplyr::filter(gene %in% t_exhaustion_markers) %>%
+      dplyr::mutate(Comparison = "PFvPBMC",
+                    Celltype = l3)
+  },
+  error = function(cond) {
+    
+    message("Failed with message:")
+    message(cond)
+    
+    pfvpbmc_l3_t_exhaustion[[l3]] <- NULL
+  })
+}
+
+#TXvPBMC
+txvpbmc_l3_t_exhaustion <- vector("list", length = length(l3_of_interest))
+names(txvpbmc_l3_t_exhaustion) <- l3_of_interest
+
+for(l3 in l3_of_interest){
+  #degs <- read.csv(file.path("..", "..", "..", "output", "analyses", "pbmc_pf_tx", "de", "TXvPBMC", "manual_l3", paste0("TXvPBMC_manual_l3_pbmc_pf_tx_", l3, ".csv"))
+  deg_file <- paste0("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/TXvPBMC/manual_l3/TXvPBMC_manual_l3_pbmc_pf_tx_", l3, ".csv")
+  tryCatch(expr = {
+    txvpbmc_l3_t_exhaustion[[l3]] <- read.csv(deg_file) %>%
+      dplyr::filter(gene %in% t_exhaustion_markers) %>%
+      dplyr::mutate(Comparison = "TXvPBMC",
+                    Celltype = l3)
+  },
+  error = function(cond) {
+    
+    message("Failed with message:")
+    message(cond)
+    
+    txvpbmc_l3_t_exhaustion[[l3]] <- NULL
+  })
+}
+
+#TXvPF
+txvpf_l3_t_exhaustion <- vector("list", length = length(l3_of_interest))
+names(txvpf_l3_t_exhaustion) <- l3_of_interest
+
+for(l3 in l3_of_interest){
+  #degs <- read.csv(file.path("..", "..", "..", "output", "analyses", "pbmc_pf_tx", "de", "TXvPF", "manual_l3", paste0("TXvPF_manual_l3_pbmc_pf_tx_", l3, ".csv"))
+  deg_file <- paste0("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/TXvPF/manual_l3/TXvPF_manual_l3_pbmc_pf_tx_", l3, ".csv")
+  tryCatch(expr = {
+    txvpf_l3_t_exhaustion[[l3]] <- read.csv(deg_file) %>%
+      dplyr::filter(gene %in% t_exhaustion_markers) %>%
+      dplyr::mutate(Comparison = "TXvPF",
+                    Celltype = l3)
+  },
+  error = function(cond) {
+    
+    message("Failed with message:")
+    message(cond)
+    
+    txvpbmc_l3_t_exhaustion[[l3]] <- NULL
+  })
+}
+
+comparisons_deseq2_t_exhaustion <- rbind(do.call(rbind, pfvpbmc_l3_t_exhaustion), 
+                                         do.call(rbind, txvpbmc_l3_t_exhaustion), 
+                                         do.call(rbind, txvpf_l3_t_exhaustion)) %>%
+  dplyr::mutate(Celltype = gsub("_", " ", Celltype))
+```
+
+```{r figure summary statistics plot, fig.width = 10, fig.height = 3}
+pdf("t_de_summary.pdf", width = 10, height = 3)
+comparisons_deseq2_t_exhaustion %>%
+  dplyr::mutate(Status = factor(ifelse(stat>0, "Up", "Down"), levels = c("Up", "Down")),
+                Significant = ifelse(padj<0.05, "Significant", "NS"),
+                Celltype_comparison = paste0(Celltype, " (", Comparison, ")")) %>%
+  ggplot(mapping = aes(x = Celltype_comparison, y = gene)) +
+  geom_point(aes(colour = Status,
+                 shape = Status,
+                 fill = stat,
+                 size = -log10(pvalue),
+                 alpha = Significant)) +
+  scale_alpha_discrete(range = c(0.25, 1)) +
+  scale_shape_manual(values = c(24, 25)) +
+  scale_fill_gradient2(high = "coral3", low = "deepskyblue3", mid = "white") +
+  scale_color_manual(values = c("coral3","deepskyblue3")) +
+  theme_bw() +
+  guides(size = guide_legend(override.aes = list(shape=17))) +
+  theme(axis.title.y =  element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 90, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+dev.off()
+```
+
+```{r figure CTLA4 expression Tregs, fig.width = 15, fig.height = 5}
+t_seuratObject_tsne_df %>%
+  dplyr::filter(manual_l3 == "CD4 Treg") %>%
+  ggplot(aes(x = Donor, y = CTLA4)) +
+  geom_jitter_rast(alpha = 0.25) +
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() +
+  labs(title = "CTLA4",
+       subtitle = paste0("p-value = ", ),
+       y = "nUMIs") +
+  facet_grid(.~Tissue, scales = "free_x", space = "free_x") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank())
+```
+
+```{r figure CTLA4 expression Tregs, fig.width = 10, fig.height = 5}
+t_seuratObject_tsne_df %>%
+  dplyr::filter(manual_l3 == "CD4 Treg",
+                Donor %in% c("pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt78")) %>%
+  ggplot(aes(x = Donor, y = CTLA4)) +
+  geom_jitter_rast(alpha = 0.25) +
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() +
+  labs(title = "CTLA4",
+       y = "nUMIs") +
+  facet_grid(.~Tissue, scales = "free_x", space = "free_x") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank())
+```
+
+```{r figure t exhaustion expression Tregs, fig.width = 10, fig.height = 10}
+t_seuratObject_tsne_df %>%
+  dplyr::filter(manual_l3 == "CD4 Treg",
+                Donor %in% c("pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt78")) %>%
+  dplyr::select(PDCD1, CTLA4, HAVCR2, LAG3, TIGIT, Donor, Tissue) %>%
+  tidyr::pivot_longer(-c(Donor, Tissue), names_to = "Gene", values_to = "nUMIs") %>%
+  ggplot(aes(x = Tissue, y = nUMIs)) +
+  geom_jitter_rast(alpha = 0.25) +
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() +
+  labs(title = "CD4 Tregs expression of T exhaustion markers") + 
+  facet_grid(Gene~Donor, scales = "free_x", space = "free_x") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank())
+```
+
+```{r goi}
+cd4treg_paired_seuratObject <- t_seuratObject[,t_seuratObject@meta.data$manual_l3 == "CD4 Treg" & t_seuratObject@meta.data$Donor %in% c("pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt78")]
+cd4treg_paired_colData <- unique(cd4treg_paired_seuratObject@meta.data[,c("SampleID", "Tissue")])
+rownames(cd4treg_paired_colData) <- cd4treg_paired_colData$SampleID
+
+cd4treg_paired_counts <- GetAssayData(cd4treg_paired_seuratObject, slot = "counts")
+cd4treg_paired_counts_sample <- cd4treg_paired_counts %*% model.matrix(~0+SampleID, data = cd4treg_paired_seuratObject@meta.data)
+colnames(cd4treg_paired_counts_sample) <- gsub("SampleID", "", colnames(cd4treg_paired_counts_sample))
+      
+cd4treg_paired_counts_sample <- cd4treg_paired_counts_sample[which(Matrix::rowSums(cd4treg_paired_counts_sample) != 0),]
+      
+cd4treg_paired_dds <- DESeqDataSetFromMatrix(countData = cd4treg_paired_counts_sample,
+                                             colData = cd4treg_paired_colData[colnames(cd4treg_paired_counts_sample),],
+                                             design = ~Tissue)
+cd4treg_paired_dds <- DESeq(cd4treg_paired_dds)
+cd4treg_paired_rld <- rlog(cd4treg_paired_dds)
+
+cd4treg_txvpf_degs <- read.csv("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/TXvPF/manual_l3/TXvPF_manual_l3_pbmc_pf_tx_CD4_Treg.csv")
+
+#pdf("cd4treg_goi.pdf", width = 9, height = 3)
+assay(cd4treg_paired_rld)[c("NFKBIA", "TNFAIP3", "ZFP36"),] %>%
+  data.frame(., GeneID = rownames(.)) %>%
+  tidyr::pivot_longer(-GeneID, names_to = "SampleID", values_to = "Expr") %>%
+  dplyr::left_join(cd4treg_paired_colData, by = "SampleID") %>%
+  dplyr::left_join(cd4treg_txvpf_degs, by = c("GeneID" = "gene")) %>%
+  dplyr::mutate(label = paste0(GeneID, "\np-value = ", formatC(pvalue, digits = 2, format = "e"))) %>%
+  ggplot(aes(x = Tissue, y = Expr)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  labs(y = bquote(log[2]~"(expression)")) +
+  facet_wrap(~label) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.x = element_blank())
+#dev.off()
+```
+
+```{r }
+data.frame(Embeddings(t_seuratObject[["tsne"]]),
+                                     t_seuratObject@meta.data,
+                                     t(as.matrix(GetAssayData(t_seuratObject)[c("NFKBIA", "TNFAIP3", "ZFP36"),]))) %>%
+  dplyr::filter(manual_l3 == "CD4 Treg",
+                Donor %in% c("pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt78")) %>%
+  dplyr::mutate(manual_l2_number = as.numeric(as.factor(manual_l2)),
+                manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
+                manual_l3_number = as.numeric(as.factor(manual_l3)),
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
+                manual_l4_number = as.numeric(as.factor(manual_l4)),
+                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4),
+                Group1 = factor(ifelse(Group == "HC", "HC", "CRC"), levels = c("CRC", "HC")),
+                Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+"))) %>%
+  dplyr::select(NFKBIA, TNFAIP3, ZFP36, Donor, Tissue) %>%
+  tidyr::pivot_longer(-c(Donor, Tissue), names_to = "Gene", values_to = "nUMIs") %>%
+  ggplot(aes(x = Tissue, y = nUMIs)) +
+  geom_jitter_rast(alpha = 0.25) +
+  geom_boxplot(outlier.shape = NA) +
+  theme_bw() +
+  labs(title = "CD4 Tregs",
+       subtitle = "Paired samples") + 
+  facet_grid(Gene~Donor, scales = "free_x", space = "free_x") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank())
+```
+
+```{r}
+
+```
+

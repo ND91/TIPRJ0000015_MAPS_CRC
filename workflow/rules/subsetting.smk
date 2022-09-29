@@ -10,9 +10,9 @@ rule pbmc_pf_tx_subsetting:
   conda:
     "../envs/r.yaml",
   log:
-    "output/pbmc_pf_tx/pbmc_pf_tx_subsetting.log",
+    "output/subsets/pbmc_pf_tx_subsetting.log",
   benchmark:
-    "output/pbmc_pf_tx/pbmc_pf_tx_subsetting_benchmark.txt",
+    "output/subsets/pbmc_pf_tx_subsetting_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
@@ -48,7 +48,7 @@ rule pbmc_pf_tx_cleaned_cd45p_subsetting:
   input:
     seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
   output:
-    pbmc_pf_tx_cleaned_cd45p_seuratobject_rds="output/subsets/pbmc_pf_tx_cleaned_SeuratObject.Rds",
+    pbmc_pf_tx_cleaned_cd45p_seuratobject_rds="output/subsets/pbmc_pf_tx_cleaned_cd45p_SeuratObject.Rds",
   threads: 
     1
   conda:
@@ -70,7 +70,7 @@ rule pbmc_pf_tx_cleaned_cd45p_pmn_subsetting:
   input:
     seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
   output:
-    pbmc_pf_tx_cleaned_cd45p_pmn_seuratobject_rds="output/subsets/pbmc_pf_tx_cleaned_SeuratObject.Rds",
+    pbmc_pf_tx_cleaned_cd45p_pmn_seuratobject_rds="output/subsets/pbmc_pf_tx_cleaned_cd45p_pmn_SeuratObject.Rds",
   threads: 
     1
   conda:
@@ -174,7 +174,7 @@ rule tx_cleaned_cd45p_subsetting:
     Rscript --vanilla workflow/scripts/subsetting/tx_cleaned_cd45p_subsetting.R {input.seurat_curated_rds} {output.tx_cleaned_cd45p_seuratobject_rds} &> {log}
     """
 
-# Cells: CD4T
+# Cells: CD4T. 
 
 rule cd4t_subsetting:
   input:
@@ -193,5 +193,73 @@ rule cd4t_subsetting:
     mem_mb=60000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/subsetting/cd4t_subsetting.R {input.seurat_curated_rds} {output.tx_seuratobject_rds} &> {log}
+    Rscript --vanilla workflow/scripts/subsetting/cd4t_subsetting.R {input.seurat_curated_rds} {output.cd4t_seuratobject_rds} &> {log}
+    """
+
+# Cells: Myeloid. 
+
+rule pbmc_pf_myeloid_subsetting:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+    pf_atlas_path="resources/pf_atlas/pf_atlas_seuratObject.Rds",
+  output:
+    pbmc_pf_myeloid_seuratobject_rds="output/subsets/pbmc_pf_myeloid_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/subsets/pbmc_pf_myeloid_subsetting.log",
+  benchmark:
+    "output/subsets/pbmc_pf_myeloid_subsetting_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/subsetting/pbmc_pf_myeloid_subsetting.R {input.seurat_curated_rds} {input.pf_atlas_path} {output.pbmc_pf_myeloid_seuratobject_rds} &> {log}
+    """
+    
+# Cells: Macrophages. 
+
+rule pbmc_pf_macrophages_subsetting:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+    pf_atlas_path="resources/pf_atlas/pf_atlas_seuratObject.Rds",
+  output:
+    pbmc_pf_macrophages_seuratobject_rds="output/subsets/pbmc_pf_macrophages_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/subsets/pbmc_pf_macrophages_subsetting.log",
+  benchmark:
+    "output/subsets/pbmc_pf_macrophages_subsetting_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/subsetting/pbmc_pf_macrophages_subsetting.R {input.seurat_curated_rds} {input.pf_atlas_path} {output.pbmc_pf_macrophages_seuratobject_rds} &> {log}
+    """
+    
+# Cells: T. 
+
+rule pbmc_pf_tx_t_subsetting:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+  output:
+    pbmc_pf_tx_t_seuratobject_rds="output/subsets/pbmc_pf_tx_t_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/subsets/pbmc_pf_tx_t_subsetting.log",
+  benchmark:
+    "output/subsets/pbmc_pf_tx_t_subsetting_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/subsetting/pbmc_pf_tx_t_subsetting.R {input.seurat_curated_rds} {output.pbmc_pf_tx_t_seuratobject_rds} &> {log}
     """

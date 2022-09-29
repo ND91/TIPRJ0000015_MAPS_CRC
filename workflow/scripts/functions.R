@@ -77,7 +77,7 @@ seuratDE <- function(seuratobj, cellsampleID, cellclusterID = NULL, sampleinfo, 
 #   output: A list of celltypes each of which includes a DESeq2 object and the results per the contrasts indicated previously ranked by p-value.
 
 if(require(speckle) == FALSE){
-  devtools::install_github("phipsonlab/speckle")
+  devtools::install_github("phipsonlab/speckle", ref = "09e202f") # This commit version is the last commit before speckle was made for 4.2 only.
   require(speckle)
 }
 
@@ -103,8 +103,14 @@ seuratDA <- function(seuratobj, sampleinfo, cellsampleID, cellclusterID, cluster
   
   da_list <- lapply(seuratobj_list, function(seuratentry){
     
+    proper_clusters <- which(seuratentry@meta.data[,cellclusterID] %in% names(which(table(seuratentry@meta.data[,cellclusterID]) >= ncell_threshold)))
+    
+    if(length(proper_clusters) == 0){
+      return(NULL)
+    }
+    
     #Remove clusters whose cell counts lie below the threshold.
-    seuratentry <- seuratentry[,which(seuratentry@meta.data[,cellclusterID] %in% names(which(table(seuratentry@meta.data[,cellclusterID]) >= ncell_threshold)))]
+    seuratentry <- seuratentry[, proper_clusters]
     
     if(length(unique(seuratentry@meta.data[,cellclusterID])) == 1){
       return(NULL)
