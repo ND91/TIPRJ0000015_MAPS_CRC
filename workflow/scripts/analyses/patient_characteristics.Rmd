@@ -12,6 +12,7 @@ Here we seek to visualize the patient metadata.
 ```{r setup, include=FALSE}
 library(ComplexHeatmap)
 library(GetoptLong)
+library(dplyr)
 ```
 
 ```{r patient metadata preparation}
@@ -56,7 +57,7 @@ patient_metadata <- readxl::read_excel(file.path("config", "samples", "patient_m
                 MMR = gsub(" \\(methyl\\)", "", MMR),
                 MMR = gsub("results in reffering hospital", "NA", MMR),
                 MMR = gsub("HC", NA, MMR),
-                MMR = gsub("NA", NA, MMR),
+                MMR = gsub("NA", "Unknown", MMR),
                 MMR = gsub("Unclear from sample", "Unknown", MMR),
                 MMR = gsub("no resection", "Unknown", MMR),
                 Cancer_stage = gsub("(HC|NA)", NA, Cancer_stage),
@@ -67,11 +68,18 @@ patient_metadata <- readxl::read_excel(file.path("config", "samples", "patient_m
                 Tumor_omics = gsub("scRNAseq", "*", Tumor_omics),
                 Tumor_omics = gsub("CyTOF", "#", Tumor_omics),
                 Tumor_omics = gsub("no", "", Tumor_omics),
-                label = ifelse(!is.na(Tumor_omics), paste0(PatientID, Tumor_omics), PatientID)
+                label = ifelse(!is.na(Tumor_omics), paste0(PatientID, Tumor_omics), PatientID),
+                Group_summarized = case_when(
+                  Group == "CRC" & PM == "Yes" ~ "CRC+",
+                  Group == "CRC" & PM == "No" ~ "CRC-",
+                  Group == "GC" & PM == "Yes" ~ "GC+",
+                  Group == "GC" & PM == "No" ~ "GC-",
+                  T ~ Group
+                )
   ) %>%
-  dplyr::select(label, MAPS_CRC, MAPS_GC, PF_ATLAS, PatientID, Tumor_omics, Sex, Age, BMI, Group, Omics, MMR, Cancer_stage, T_stage, N_stage, M_stage, PM, HIPEC) %>%
+  dplyr::select(label, MAPS_CRC, MAPS_GC, PF_ATLAS, PatientID, Tumor_omics, Sex, Age, BMI, Group, Group_summarized, Omics, MMR, Cancer_stage, T_stage, N_stage, M_stage, PM, HIPEC) %>%
   dplyr::filter(Group != "IBD_CD")
-  #dplyr::filter(PatientID %in% paste0("pt", c(43, 49, 55, 60, 65, 34, 53, 58, 47, 19, 10, 66, 59, 50, 61, 05, 22, 25)))
+#dplyr::filter(PatientID %in% paste0("pt", c(43, 49, 55, 60, 65, 34, 53, 58, 47, 19, 10, 66, 59, 50, 61, 05, 22, 25)))
 rownames(patient_metadata) <- patient_metadata$PatientID  
 
 patient_metadata <- patient_metadata[order(patient_metadata$Group),]
@@ -84,7 +92,8 @@ patient_metadata_labels <- mapply(function(x, y) {
 
 ```{r figure heatmap patient metadata, fig.width = 15, fig.height = 10}
 all_patient_metadata <- patient_metadata %>%
-  dplyr::filter(MAPS_CRC == "Yes" | MAPS_GC == "Yes" | PF_ATLAS == "Yes")
+  dplyr::filter(MAPS_CRC == "Yes" | MAPS_GC == "Yes" | PF_ATLAS == "Yes") %>%
+  dplyr::arrange(Group_summarized, HIPEC)
 
 all_patient_metadata_labels <- mapply(function(x, y) {
   ifelse(!is.na(y), qq("@{x}<sup>@{y}</sup>"), qq("@{x}"))
@@ -101,8 +110,8 @@ all_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_rend
                                                Sex = all_patient_metadata$Sex,
                                                Age = anno_barplot(all_patient_metadata$Age, bar_width = 1, gp = gpar(fill = "#444444")),
                                                BMI = anno_barplot(all_patient_metadata$BMI, bar_width = 1, gp = gpar(fill = "#a69eb0")),
-                                               Group = all_patient_metadata$Group, 
-                                               PM = all_patient_metadata$PM,
+                                               Group = all_patient_metadata$Group_summarized, 
+                                               #PM = all_patient_metadata$PM,
                                                HIPEC = all_patient_metadata$HIPEC,
                                                `MMR primary tumor` = all_patient_metadata$MMR,
                                                `Pathological stage` = anno_simple(x = all_patient_metadata$Cancer_stage, 
@@ -121,8 +130,10 @@ all_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_rend
                                                col = list(Sex = c("Male" = "#3b55cd", 
                                                                   "Female" = "#cf3476"),
                                                           Group = c("HC" = "#91d1c2",
-                                                                    "GC" = "#22845b",
-                                                                    "CRC" = "#845422"),
+                                                                    "GC-" = "#22845b",
+                                                                    "GC+" = "#226084",
+                                                                    "CRC-" = "#7f2284",
+                                                                    "CRC+" = "#845422"),
                                                           Omics = c("CyTOF+scRNAseq" = "#000000",
                                                                     "scRNAseq" = "#FFFAA0",
                                                                     "CyTOF" = "#A7C7E7",
@@ -132,8 +143,8 @@ all_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_rend
                                                                                   "Unknown" = "#a69eb0"),
                                                           HIPEC = c("Yes" = "#00BFC4",
                                                                     "No" = "#7CAE00"),
-                                                          PM = c("No" = "#054f42",
-                                                                 "Yes" = "#AB2020"),
+                                                          # PM = c("No" = "#054f42",
+                                                          #        "Yes" = "#AB2020"),
                                                           `MAPS CRC` = c("No" = "#ffffff",
                                                                          "Yes" = "#000000"),
                                                           `MAPS GC` = c("No" = "#ffffff",
@@ -146,9 +157,64 @@ plot(all_patient_metadata_plot)
 dev.off()
 ```
 
+```{r figure heatmap all patient metadata summarized, fig.width = 15, fig.height = 10}
+all_patient_metadata_summarized_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_render(all_patient_metadata_labels, 
+                                                                                              align_widths = TRUE), 
+                                                                                just = "left", 
+                                                                                location = 0.25),
+                                                          Sex = all_patient_metadata$Sex,
+                                                          Age = anno_barplot(all_patient_metadata$Age, bar_width = 1, gp = gpar(fill = "#444444")),
+                                                          BMI = anno_barplot(all_patient_metadata$BMI, bar_width = 1, gp = gpar(fill = "#a69eb0")),
+                                                          Group = all_patient_metadata$Group_summarized, 
+                                                          #PM = all_patient_metadata$PM,
+                                                          HIPEC = all_patient_metadata$HIPEC,
+                                                          `MMR primary tumor` = all_patient_metadata$MMR,
+                                                          `Pathological stage` = anno_simple(x = all_patient_metadata$Cancer_stage, 
+                                                                                             pch = all_patient_metadata$Cancer_stage, 
+                                                                                             col = c("I" = "#ffffff",
+                                                                                                     "II" = "#ffffff",
+                                                                                                     "III" = "#ffffff",
+                                                                                                     "IV" = "#ffffff"),
+                                                                                             na_col = "#ffffff",
+                                                                                             gp = gpar(col = "black")),
+                                                          Omics = all_patient_metadata$Omics,
+                                                          annotation_name_side = "left", 
+                                                          gp = gpar(col = "black"),
+                                                          border = T,
+                                                          na_col = "#ffffff",
+                                                          col = list(Sex = c("Male" = "#3b55cd", 
+                                                                             "Female" = "#cf3476"),
+                                                                     Group = c("HC" = "#91d1c2",
+                                                                               "GC-" = "#22845b",
+                                                                               "GC+" = "#226084",
+                                                                               "CRC-" = "#7f2284",
+                                                                               "CRC+" = "#845422"),
+                                                                     Omics = c("CyTOF+scRNAseq" = "#000000",
+                                                                               "scRNAseq" = "#FFFAA0",
+                                                                               "CyTOF" = "#A7C7E7",
+                                                                               "CITEseq" = "#C1E1C1"),
+                                                                     `MMR primary tumor` = c("MMRp" = "#0000ff",
+                                                                                             "MMRd" = "#ff0000",
+                                                                                             "Unknown" = "#a69eb0"),
+                                                                     HIPEC = c("Yes" = "#00BFC4",
+                                                                               "No" = "#7CAE00"),
+                                                                     # PM = c("No" = "#054f42",
+                                                                     #        "Yes" = "#AB2020"),
+                                                                     `MAPS CRC` = c("No" = "#ffffff",
+                                                                                    "Yes" = "#000000"),
+                                                                     `MAPS GC` = c("No" = "#ffffff",
+                                                                                   "Yes" = "#000000"),
+                                                                     `MAPS PF atlas` = c("No" = "#ffffff",
+                                                                                         "Yes" = "#000000")))
+
+pdf(width = 15, height = 6.5, file = file.path("all_patient_metadata_summarized.pdf"))
+plot(all_patient_metadata_summarized_plot)
+dev.off()
+```
+
 ```{r figure heatmap HC CRC patient metadata, fig.width = 10, fig.height = 7}
-crc_patient_metadata <- patient_metadata %>%
-  dplyr::filter(MAPS_CRC == "Yes") %>%
+crc_patient_metadata <- all_patient_metadata %>%
+  dplyr::filter(Group == "CRC") %>%
   dplyr::select(-c(MAPS_CRC, MAPS_GC, PF_ATLAS))
 
 crc_patient_metadata_labels <- mapply(function(x, y) {
@@ -163,8 +229,8 @@ crc_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_rend
                                                Sex = crc_patient_metadata$Sex,
                                                Age = anno_barplot(crc_patient_metadata$Age, bar_width = 1, gp = gpar(fill = "#444444")),
                                                BMI = anno_barplot(crc_patient_metadata$BMI, bar_width = 1, gp = gpar(fill = "#a69eb0")),
-                                               Group = crc_patient_metadata$Group, 
-                                               PM = crc_patient_metadata$PM,
+                                               Group = crc_patient_metadata$Group_summarized, 
+                                               #PM = crc_patient_metadata$PM,
                                                HIPEC = crc_patient_metadata$HIPEC,
                                                `MMR primary tumor` = crc_patient_metadata$MMR,
                                                `Pathological stage` = anno_simple(x = crc_patient_metadata$Cancer_stage, 
@@ -182,9 +248,8 @@ crc_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_rend
                                                na_col = "#ffffff",
                                                col = list(Sex = c("Male" = "#3b55cd", 
                                                                   "Female" = "#cf3476"),
-                                                          Group = c("HC" = "#91d1c2",
-                                                                    "GC" = "#22845b",
-                                                                    "CRC" = "#845422"),
+                                                          Group = c("CRC-" = "#7f2284",
+                                                                    "CRC+" = "#845422"),
                                                           Omics = c("CyTOF+scRNAseq" = "#000000",
                                                                     "scRNAseq" = "#FFFAA0",
                                                                     "CyTOF" = "#A7C7E7",
@@ -203,7 +268,7 @@ dev.off()
 ```
 
 ```{r figure heatmap HC GC patient metadata, fig.width = 10, fig.height = 7}
-gc_patient_metadata <- patient_metadata %>%
+gc_patient_metadata <- all_patient_metadata %>%
   dplyr::filter(MAPS_GC == "Yes") %>%
   dplyr::select(-c(MAPS_CRC, MAPS_GC, PF_ATLAS))
 
@@ -213,45 +278,44 @@ gc_patient_metadata_labels <- mapply(function(x, y) {
 }, x = gc_patient_metadata$PatientID, y = gc_patient_metadata$Tumor_omics)
 
 gc_patient_metadata_plot <- HeatmapAnnotation(patientID = anno_text(x = gt_render(gc_patient_metadata_labels, 
-                                                                                   align_widths = TRUE), 
-                                                                     just = "left", 
-                                                                     location = 0.25),
-                                               Sex = gc_patient_metadata$Sex,
-                                               Age = anno_barplot(gc_patient_metadata$Age, bar_width = 1, gp = gpar(fill = "#444444")),
-                                               BMI = anno_barplot(gc_patient_metadata$BMI, bar_width = 1, gp = gpar(fill = "#a69eb0")),
-                                               Group = gc_patient_metadata$Group, 
-                                               PM = gc_patient_metadata$PM,
-                                               HIPEC = gc_patient_metadata$HIPEC,
-                                               `MMR primary tumor` = gc_patient_metadata$MMR,
-                                               `Pathological stage` = anno_simple(x = gc_patient_metadata$Cancer_stage, 
-                                                                                  pch = gc_patient_metadata$Cancer_stage, 
-                                                                                  col = c("I" = "#ffffff",
-                                                                                          "II" = "#ffffff",
-                                                                                          "III" = "#ffffff",
-                                                                                          "IV" = "#ffffff"),
-                                                                                  na_col = "#ffffff",
-                                                                                  gp = gpar(col = "black")),
-                                               Omics = gc_patient_metadata$Omics,
-                                               annotation_name_side = "left", 
-                                               gp = gpar(col = "black"),
-                                               border = T,
-                                               na_col = "#ffffff",
-                                               col = list(Sex = c("Male" = "#3b55cd", 
-                                                                  "Female" = "#cf3476"),
-                                                          Group = c("HC" = "#91d1c2",
-                                                                    "GC" = "#22845b",
-                                                                    "CRC" = "#845422"),
-                                                          Omics = c("CyTOF+scRNAseq" = "#000000",
-                                                                    "scRNAseq" = "#FFFAA0",
-                                                                    "CyTOF" = "#A7C7E7",
-                                                                    "CITEseq" = "#C1E1C1"),
-                                                          `MMR primary tumor` = c("MMRp" = "#0000ff",
-                                                                                  "MMRd" = "#ff0000",
-                                                                                  "Unknown" = "#a69eb0"),
-                                                          HIPEC = c("Yes" = "#00BFC4",
-                                                                    "No" = "#7CAE00"),
-                                                          PM = c("No" = "#054f42",
-                                                                 "Yes" = "#AB2020")))
+                                                                                  align_widths = TRUE), 
+                                                                    just = "left", 
+                                                                    location = 0.25),
+                                              Sex = gc_patient_metadata$Sex,
+                                              Age = anno_barplot(gc_patient_metadata$Age, bar_width = 1, gp = gpar(fill = "#444444")),
+                                              BMI = anno_barplot(gc_patient_metadata$BMI, bar_width = 1, gp = gpar(fill = "#a69eb0")),
+                                              Group = gc_patient_metadata$Group_summarized, 
+                                              #PM = gc_patient_metadata$PM,
+                                              HIPEC = gc_patient_metadata$HIPEC,
+                                              `MMR primary tumor` = gc_patient_metadata$MMR,
+                                              `Pathological stage` = anno_simple(x = gc_patient_metadata$Cancer_stage, 
+                                                                                 pch = gc_patient_metadata$Cancer_stage, 
+                                                                                 col = c("I" = "#ffffff",
+                                                                                         "II" = "#ffffff",
+                                                                                         "III" = "#ffffff",
+                                                                                         "IV" = "#ffffff"),
+                                                                                 na_col = "#ffffff",
+                                                                                 gp = gpar(col = "black")),
+                                              Omics = gc_patient_metadata$Omics,
+                                              annotation_name_side = "left", 
+                                              gp = gpar(col = "black"),
+                                              border = T,
+                                              na_col = "#ffffff",
+                                              col = list(Sex = c("Male" = "#3b55cd", 
+                                                                 "Female" = "#cf3476"),
+                                                         Group = c("GC-" = "#22845b",
+                                                                   "GC+" = "#226084"),
+                                                         Omics = c("CyTOF+scRNAseq" = "#000000",
+                                                                   "scRNAseq" = "#FFFAA0",
+                                                                   "CyTOF" = "#A7C7E7",
+                                                                   "CITEseq" = "#C1E1C1"),
+                                                         `MMR primary tumor` = c("MMRp" = "#0000ff",
+                                                                                 "MMRd" = "#ff0000",
+                                                                                 "Unknown" = "#a69eb0"),
+                                                         HIPEC = c("Yes" = "#00BFC4",
+                                                                   "No" = "#7CAE00"),
+                                                         PM = c("No" = "#054f42",
+                                                                "Yes" = "#AB2020")))
 
 pdf(width = 10, height = 7, file = file.path("gc_patient_metadata.pdf"))
 plot(gc_patient_metadata_plot)

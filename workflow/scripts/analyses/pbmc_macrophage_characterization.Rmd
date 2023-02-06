@@ -18,6 +18,7 @@ library(ggrastr)
 library(ggrepel)
 library(ggpubr)
 library(svglite)
+library(viridis)
 ```
 
 Visualizing the myeloid compartment from PBMC and PF, we observe macrophage-like cells in the PBMC fraction. This is surprising as macrophages can typically only be found in tissue and not in circulation.
@@ -42,6 +43,22 @@ myeloid_seuratObject_tsne_df <- data.frame(Embeddings(myeloid_seuratObject[["tsn
                 manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4),
                 Group1 = factor(ifelse(Group == "HC", "HC", "CRC"), levels = c("CRC", "HC")),
                 Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+")))
+
+m2_markers <- c("CD163", "MRC1", "CD274", "MARCO", "APOE")
+
+myeloid_pf_crcn_seuratObject_tsne_df <- data.frame(Embeddings(myeloid_seuratObject[["tsne"]]),
+                                                   myeloid_seuratObject@meta.data,
+                                                   t(as.matrix(GetAssayData(myeloid_seuratObject)[m2_markers,]))) %>%
+  dplyr::filter(!manual_l2 %in% c("Granulocytes", "Platelets", "DC proliferating"),
+                Group == "CRC-",
+                Tissue == "PF") %>%
+  dplyr::mutate(manual_l4 = ifelse(manual_l4 == "Macrophages VCAN+CD163-", "Macrophages VCAN+", manual_l4),
+                manual_l2_number = as.numeric(as.factor(manual_l2)),
+                manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
+                manual_l3_number = as.numeric(as.factor(manual_l3)),
+                manual_l3_w_number = paste0(as.numeric(as.factor(manual_l3)), ". ", manual_l3),
+                manual_l4_number = as.numeric(as.factor(manual_l4)),
+                manual_l4_w_number = paste0(as.numeric(as.factor(manual_l4)), ". ", manual_l4))
 ```
 
 ```{r figure tSNE col_manual_l2 split_tissue}
@@ -468,4 +485,123 @@ degs_pfvtx_c1qmacrophages <- read.csv("/")
 
 
 ### Comparing PF: PM+ with PM-
+
+### GATA6 macrophages
+
+```{r}
+png(filename = "tSNE_macrophage_GATA6_PFvPBMC.png", width = 10, height = 5, units = "in", res = 300)
+print(FeaturePlot(macrophages_seuratObject, "GATA6", split.by = "Tissue", order = T))
+dev.off()
+```
+
+```{r}
+M2_PBMC_seuratObject <- macrophages_seuratObject[,macrophages_seuratObject@meta.data$manual_l3 == "M2-like" & macrophages_seuratObject@meta.data$Tissue == "PBMC"]
+M2_PBMC_colData <- unique(M2_PBMC_seuratObject@meta.data[,c("SampleID", "Group")])
+rownames(M2_PBMC_colData) <- M2_PBMC_colData$SampleID
+
+M2_PBMC_counts <- GetAssayData(M2_PBMC_seuratObject, slot = "counts")
+M2_PBMC_counts_sample <- M2_PBMC_counts %*% model.matrix(~0+SampleID, data = M2_PBMC_seuratObject@meta.data)
+colnames(M2_PBMC_counts_sample) <- gsub("SampleID", "", colnames(M2_PBMC_counts_sample))
+
+M2_PBMC_counts_sample <- M2_PBMC_counts_sample[which(Matrix::rowSums(M2_PBMC_counts_sample) != 0),]
+
+M2_PBMC_dds <- DESeqDataSetFromMatrix(countData = M2_PBMC_counts_sample,
+                                      colData = M2_PBMC_colData[colnames(M2_PBMC_counts_sample),],
+                                      design = ~Tissue)
+M2_PBMC_dds <- DESeq(M2_PBMC_dds)
+macrophagec1q_paired_rld <- rlog(macrophagec1q_paired_dds)
+
+macrophagec1q_txvpf_degs <- read.csv("/media/hdd1/andrewliyim/maps_crc/output/analyses/pbmc_pf_tx/de/TXvPF/manual_l4/TXvPF_manual_l4_pbmc_pf_tx_Macrophages_C1Qp.csv")
+
+pdf("macrophagec1q_goi.pdf", width = 12, height = 3)
+assay(macrophagec1q_paired_rld)[c("THBS1", "MRC1", "IGF1", "CXCR4"),] %>%
+  data.frame(., GeneID = rownames(.)) %>%
+  tidyr::pivot_longer(-GeneID, names_to = "SampleID", values_to = "Expr") %>%
+  dplyr::left_join(macrophagec1q_paired_colData, by = "SampleID") %>%
+  dplyr::left_join(macrophagec1q_txvpf_degs, by = c("GeneID" = "gene")) %>%
+  dplyr::mutate(label = paste0(GeneID, "\np-value = ", formatC(pvalue, digits = 2, format = "e"))) %>%
+  ggplot(aes(x = Tissue, y = Expr)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  labs(y = bquote(log[2]~"(expression)")) +
+  facet_wrap(~label, nrow = 1) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.x = element_blank())
+dev.off()
+```
+
+```{r figure tsne pf pmn}
+pdf(file = "fig_tsne_pf_pmn.pdf", width = 7.5, height = 7.5)
+myeloid_pf_crcn_seuratObject_tsne_df %>%
+  ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = myeloid_pf_crcn_seuratObject_tsne_df %>%
+                     dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                     summarize(x = median(x = tSNE_1),
+                               y = median(x = tSNE_2)),
+                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "PF from CRC PM- patients") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+dev.off()
+```
+
+
+```{r figure tsne pf pmn m2 markers}
+fig_tsne_pf_pmn_m2markers_list <- lapply(m2_markers, function(marker_gene){
+  myeloid_pf_crcn_seuratObject_tsne_df %>%
+    ggplot(aes(x = tSNE_1, y = tSNE_2)) +
+    geom_point_rast(show.legend = F, size = 2, col = "black") +
+    geom_point_rast(show.legend = T, size = 1, aes_string(col = marker_gene, alpha = marker_gene)) +
+    labs(y = "",
+         x = "") +
+    geom_label_repel(data = myeloid_pf_crcn_seuratObject_tsne_df %>%
+                       dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                       summarize(x = median(x = tSNE_1),
+                                 y = median(x = tSNE_2)),
+                     mapping = aes(label = manual_l2_number, x = x, y = y),
+                     alpha = 1, 
+                     show.legend = F) +
+    labs(subtitle = marker_gene) +
+    scale_color_viridis() +
+    #facet_grid(.~Tissue) +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.pos = "bottom",
+          legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          strip.text.x = element_text(face = "bold"),
+          strip.text.y = element_text(face = "bold"))
+})
+
+fig_tsne_pf_pmn_m2markers <- ggarrange(plotlist = fig_tsne_pf_pmn_m2markers_list, nrow = 3, ncol = 2)
+
+svglite(width = 20, height = 10, file = fig2_svg_path, bg = "white")
+pdf(file = "fig_tsne_pf_pmn_m2markers.pdf", width = 15, height = 7.5*3)
+print(fig_tsne_pf_pmn_m2markers)
+dev.off()
+```
 

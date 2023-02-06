@@ -1,3 +1,0 @@
-svglite::svglite(width = 30, height = 7.5, file = "elbow.svg", bg = "white")
-ElbowPlot(seuratObject, ndims = 100)
-dev.off()

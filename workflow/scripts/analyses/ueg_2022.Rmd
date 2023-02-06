@@ -13,6 +13,9 @@ require(Seurat)
 require(DESeq2)
 require(GetoptLong)
 require(ComplexHeatmap)
+require(ggplot2)
+require(ggrepel)
+require(ggrastr)
 ```
 
 ```{r import}
@@ -282,9 +285,11 @@ macrophagec1q_ueg_rld <- rlog(macrophagec1q_ueg_dds)
 
 ### Dimred plot
 
-```{r myeloid preparation}
+```{r mnp preparation}
 myeloid_seuratObject <- readRDS("/media/hdd1/andrewliyim/maps_crc/output/subsets/pbmc_pf_myeloid_SeuratObject.Rds")
 mnp_seuratObject <- myeloid_seuratObject[,which(myeloid_seuratObject@meta.data$manual_l2 %in% c("CDCs", "Macrophages", "Monocytes", "PDCs"))]
+
+mnp_markers <- c("CD14", "FCGR3A", "CD163", "MARCO", "CD68", "CD1C")
 
 mnp_seuratObject <- DietSeurat(mnp_seuratObject, counts = T, data = T, scale.data = F)
 mnp_seuratObject <- mnp_seuratObject[Matrix::rowSums(mnp_seuratObject) != 0, ]
@@ -296,7 +301,8 @@ mnp_seuratObject <- FindClusters(mnp_seuratObject, resolution = 0.5, verbose = F
 mnp_seuratObject <- RunUMAP(mnp_seuratObject, dims = 1:68, seed.use = 9781432)
 
 mnp_seuratObject_umap_df <- data.frame(Embeddings(mnp_seuratObject[["umap"]]),
-                                           mnp_seuratObject@meta.data) %>%
+                                       mnp_seuratObject@meta.data,
+                                       t(GetAssayData(mnp_seuratObject)[mnp_markers,])) %>%
   dplyr::mutate(manual_l2_number = as.numeric(as.factor(manual_l2)),
                 manual_l2_w_number = paste0(as.numeric(as.factor(manual_l2)), ". ", manual_l2),
                 manual_l3_number = as.numeric(as.factor(manual_l3)),
@@ -307,8 +313,81 @@ mnp_seuratObject_umap_df <- data.frame(Embeddings(mnp_seuratObject[["umap"]]),
                 Group2 = factor(Group, levels = c("HC", "CRC-", "CRC+")))
 ```
 
+```{r mnp UMAP col_manual_l2 split_tissue}
+pdf(file = "pbmc_pf_pmn_mnp_umap.pdf", width = 10, height = 6)
+mnp_seuratObject_umap_df %>%
+  dplyr::filter(Tissue != "TX" & Metastasis == "PM-") %>%
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 2, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = manual_l2_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = mnp_seuratObject_umap_df %>%
+                     dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                     summarize(x = median(x = UMAP_1),
+                               y = median(x = UMAP_2)),
+                   mapping = aes(label = manual_l2_number, x = x, y = y, col = manual_l2_w_number),
+                   alpha = 1, 
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  labs(subtitle = "Mononuclear phagocytes from CRC patients") +
+  facet_grid(.~Tissue) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"),
+        strip.text.y = element_text(face = "bold"))
+dev.off()
+```
+
+```{r mnp UMAP col_marker}
+mnp_marker_list <- lapply(mnp_markers, function(marker_gene){
+  mnp_seuratObject_umap_df %>%
+    dplyr::filter(Tissue != "TX" & Metastasis == "PM-") %>%
+    ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+    geom_point_rast(show.legend = F, size = 2, col = "black") +
+    geom_point_rast(show.legend = T, size = 1, aes_string(col = marker_gene, alpha = marker_gene)) +
+    labs(y = "",
+         x = "") +
+    geom_label_repel(data = mnp_seuratObject_umap_df %>%
+                       dplyr::group_by(manual_l2_number, manual_l2_w_number) %>%
+                       summarize(x = median(x = UMAP_1),
+                                 y = median(x = UMAP_2)),
+                     mapping = aes(label = manual_l2_number, x = x, y = y),
+                     alpha = 1, 
+                     show.legend = F) +
+    labs(subtitle = marker_gene) +
+    #facet_grid(.~Tissue) +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          legend.pos = "bottom",
+          legend.title = element_blank(),
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          strip.text.x = element_text(face = "bold"),
+          strip.text.y = element_text(face = "bold"))
+})
+
+
+pdf(file = "pbmc_pf_pmn_mnp_marker_umap.pdf", width = 15, height = 10)
+ggarrange(plotlist = mnp_marker_list, nrow = 2, ncol = 3)
+dev.off()
+```
+
+
 ```{r myeloid UMAP col_manual_l2 split_tissue}
-pdf(file = "pbmc_mnp_umap.pdf", width = 15, height = 7.5)
+pdf(file = "pbmc_mnp_umap2.pdf", width = 15, height = 5)
 mnp_seuratObject_umap_df %>%
   dplyr::filter(Tissue == "PBMC") %>%
   ggplot(aes(x = UMAP_1, y = UMAP_2)) +
@@ -455,6 +534,77 @@ assay(macrophagec1q_ueg_rld)[c1q_macrophages_goi,] %>%
                 Group = paste0(Group, " (", Tissue, ")")) %>%
   dplyr::filter(Tissue != "PBMC") %>%
   ggplot(aes(x = Group, y = Expr, col = Group)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  labs(y = bquote(log[2]~"(expression)")) +
+  facet_wrap(~label, scales = "free_y") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.x = element_blank())
+dev.off()
+```
+
+### M2 macrophages: PF: PM+vPM-
+
+```{r m2 macrophages pf pmpvpmn degs}
+pf_macrophagem2_uegpmp_samples_seuratObject <- pbmc_pf_tx_seuratObject[,pbmc_pf_tx_seuratObject$manual_l3 == "M2-like" &
+                                                                             pbmc_pf_tx_seuratObject@meta.data$SampleID %in% ueg_samples$SampleID &
+                                                                             pbmc_pf_tx_seuratObject@meta.data$Tissue %in% c("PF")]
+
+pf_macrophagem2_uegpmp_samples <- unique(pf_macrophagem2_uegpmp_samples_seuratObject@meta.data[,c("SampleID", "Donor", "Metastasis")])
+rownames(pf_macrophagem2_uegpmp_samples) <- pf_macrophagem2_uegpmp_samples$SampleID
+pf_macrophagem2_uegpmp_samples$Metastasis_rc <- ifelse(pf_macrophagem2_uegpmp_samples$Metastasis == "PM+", "PMp", "PMn")
+
+pf_macrophagem2_uegpmp_counts <- GetAssayData(pf_macrophagem2_uegpmp_samples_seuratObject, slot = "counts")
+pf_macrophagem2_uegpmp_counts_sample <- pf_macrophagem2_uegpmp_counts %*% model.matrix(~0+SampleID, data = pf_macrophagem2_uegpmp_samples_seuratObject@meta.data)
+colnames(pf_macrophagem2_uegpmp_counts_sample) <- gsub("SampleID", "", colnames(pf_macrophagem2_uegpmp_counts_sample))
+
+pf_macrophagem2_uegpmp_counts_sample <- pf_macrophagem2_uegpmp_counts_sample[which(Matrix::rowSums(pf_macrophagem2_uegpmp_counts_sample) != 0),]
+
+pf_macrophagem2_uegpmp_dds <- DESeqDataSetFromMatrix(countData = data.frame(pf_macrophagem2_uegpmp_counts_sample),
+                                                     colData = pf_macrophagem2_uegpmp_samples[colnames(pf_macrophagem2_uegpmp_counts_sample),],
+                                                     design = ~Metastasis_rc)
+pf_macrophagem2_uegpmp_dds <- DESeq(pf_macrophagem2_uegpmp_dds)
+
+degs_pf_macrophagem2_uegpmp <- results(pf_macrophagem2_uegpmp_dds, name = "Metastasis_rc_PMp_vs_PMn")
+degs_pf_macrophagem2_uegpmp <- degs_pf_macrophagem2_uegpmp[!is.na(degs_pf_macrophagem2_uegpmp$padj),]
+degs_pf_macrophagem2_uegpmp <- degs_pf_macrophagem2_uegpmp[order(degs_pf_macrophagem2_uegpmp$pvalue),]
+degs_pf_macrophagem2_uegpmp$gene <- rownames(degs_pf_macrophagem2_uegpmp)
+
+pf_macrophagem2_uegpmp_rld <- rlog(pf_macrophagem2_uegpmp_dds)
+
+pdf(width = 12.5, height = 10, file = file.path("m2_macrophages_pf_goi_pmpvpmn.pdf"))
+assay(pf_macrophagem2_uegpmp_rld)[c1q_macrophages_goi,] %>%
+  data.frame(., GeneID = rownames(.)) %>%
+  tidyr::pivot_longer(-GeneID, names_to = "SampleID", values_to = "Expr") %>%
+  dplyr::left_join(data.frame(colData(pf_macrophagem2_uegpmp_rld)), by = "SampleID") %>%
+  dplyr::left_join(data.frame(degs_pf_macrophagem2_uegpmp), by = c("GeneID" = "gene")) %>%
+  dplyr::mutate(label = paste0(GeneID, "\np-value = ", formatC(pvalue, digits = 2, format = "e"))) %>%
+  ggplot(aes(x = Metastasis, y = Expr, col = Metastasis)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  labs(y = bquote(log[2]~"(expression)")) +
+  facet_wrap(~label, scales = "free_y") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.title.x = element_blank())
+dev.off()
+```
+
+
+```{r c1q macrophages txvpf goi visualization, fig.height=10, fig.width = 12.5}
+pdf(width = 12.5, height = 10, file = file.path("c1q_macrophages_txvpf_goi_pmp.pdf"))
+assay(macrophagec1q_ueg_rld)[c1q_macrophages_goi,] %>%
+  data.frame(., GeneID = rownames(.)) %>%
+  tidyr::pivot_longer(-GeneID, names_to = "SampleID", values_to = "Expr") %>%
+  dplyr::left_join(data.frame(colData(macrophagec1q_ueg_rld)), by = "SampleID") %>%
+  dplyr::left_join(degs_txvpf_c1qp_macrophages, by = c("GeneID" = "gene")) %>%
+  dplyr::mutate(label = paste0(GeneID, "\np-value = ", formatC(pvalue, digits = 2, format = "e"))) %>%
+  dplyr::filter(Tissue != "PBMC",
+                Group != "CRC-") %>%
+  ggplot(aes(x = Tissue, y = Expr, col = Tissue)) +
   geom_boxplot(outlier.shape = NA) +
   geom_jitter() +
   labs(y = bquote(log[2]~"(expression)")) +

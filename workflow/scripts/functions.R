@@ -12,6 +12,7 @@
 #   output: A list of celltypes each of which includes a DESeq2 object and the results per the contrasts indicated previously ranked by p-value.
 
 seuratDE <- function(seuratobj, cellsampleID, cellclusterID = NULL, sampleinfo, design, contrast = NULL, name = NULL){
+  require(DESeq2)
   
   if(!class(seuratobj) != "SeuratObj") stop("\"seuratobj\" must be of the class SeuratObject")
   if(!cellsampleID %in% colnames(seuratobj@meta.data)) stop("\"cellsampleID\" cannot be found among the cell metadata column names in the provided \"seuratobj\"")

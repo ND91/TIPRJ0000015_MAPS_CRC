@@ -25,9 +25,9 @@ seuratObject <- readRDS(seurat_rds_path)
 
 seuratObject <- seuratObject[,seuratObject@meta.data$Tissue == tissue]
 
-sampleinfo <- unique(seuratObject@meta.data[,c("Donor", "Sex", "Age", "Group")])
+sampleinfo <- unique(seuratObject@meta.data[,c("Donor", "Sex", "Age", "Metastasis")])
 rownames(sampleinfo) <- paste0(sampleinfo$Donor)
-sampleinfo$Metastasis <- ifelse(sampleinfo$Group == "CRC+", "PMp", "PMn")
+sampleinfo$Metastasis <- ifelse(sampleinfo$Metastasis == "PM+", "PMp", "PMn")
 
 deseq2_results_dds_list <- seuratDE(seuratobj = seuratObject, 
                                     cellsampleID = "Donor", 
@@ -36,28 +36,21 @@ deseq2_results_dds_list <- seuratDE(seuratobj = seuratObject,
                                     design = "~Metastasis", 
                                     contrast = c("Metastasis", "PMp", "PMn"))
 
-degs_list <- lapply(names(deseq2_results_dds_list), function(celltype){
-  degs <- deseq2_results_dds_list[[celltype]]$degs
+dds_list <- degs_list <- vector(mode = "list", length = length(deseq2_results_dds_list))
+names(dds_list) <- names(degs_list) <- names(deseq2_results_dds_list)
+
+for(celltype in names(deseq2_results_dds_list)){
+  degs_list[[celltype]] <- deseq2_results_dds_list[[celltype]]$degs
+  dds_list[[celltype]] <- deseq2_results_dds_list[[celltype]]$dds
   
   celltype_rn <- gsub("\\+", "p", celltype)
   celltype_rn <- gsub("[\\| \\/]", "_", celltype_rn)
   
-  write.csv(degs, paste0(base_path, "_", celltype_rn, ".csv"))
-  
-  return(degs)
-})
+  write.csv(degs_list[[celltype]], paste0(base_path, "_", celltype_rn, "_degs.csv"))
+  saveRDS(dds_list[[celltype]], paste0(base_path, "_", celltype_rn, "_dds.Rds"))
+}
 
 saveRDS(degs_list, degs_list_path, compress = "gzip")
-
-dds_list <- lapply(deseq2_results_dds_list, function(celltype){
-  dds <- celltype$dds
-  
-  saveRDS(dds, paste0(base_path, "_", celltype_rn, "_dds.Rds"))
-  return(dds)
-})
-
-names(dds_list) <- names(deseq2_results_dds_list)
-
-saveRDS(deseq2_results_dds_list, deseq2_list_path, compress = "gzip")
+saveRDS(dds_list, deseq2_list_path, compress = "gzip")
 
 sessionInfo()

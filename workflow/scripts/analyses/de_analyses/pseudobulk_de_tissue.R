@@ -41,24 +41,21 @@ deseq2_results_dds_list <- seuratDE(seuratobj = seuratObject,
                                     design = "~Tissue", 
                                     contrast = c("Tissue", tissue_case, tissue_control))
 
-degs_list <- lapply(names(deseq2_results_dds_list), function(celltype){
-  degs <- deseq2_results_dds_list[[celltype]]$degs
+dds_list <- degs_list <- vector(mode = "list", length = length(deseq2_results_dds_list))
+names(dds_list) <- names(degs_list) <- names(deseq2_results_dds_list)
 
+for(celltype in names(deseq2_results_dds_list)){
+  degs_list[[celltype]] <- deseq2_results_dds_list[[celltype]]$degs
+  dds_list[[celltype]] <- deseq2_results_dds_list[[celltype]]$dds
+  
   celltype_rn <- gsub("\\+", "p", celltype)
   celltype_rn <- gsub("[\\| \\/]", "_", celltype_rn)
   
-  write.csv(degs, paste0(base_path, "_", celltype_rn, ".csv"))
-  
-  return(degs)
-})
+  write.csv(degs_list[[celltype]], paste0(base_path, "_", celltype_rn, "_degs.csv"))
+  saveRDS(dds_list[[celltype]], paste0(base_path, "_", celltype_rn, "_dds.Rds"))
+}
 
 saveRDS(degs_list, degs_list_path, compress = "gzip")
-
-dds_list <- lapply(deseq2_results_dds_list, function(celltype){
-  celltype$dds
-})
-names(dds_list) <- names(deseq2_results_dds_list)
-
 saveRDS(dds_list, deseq2_list_path, compress = "gzip")
 
 sessionInfo()
