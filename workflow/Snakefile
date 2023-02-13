@@ -11,7 +11,8 @@ configfile: "config/config.yaml"
 sample_metadata = pd.read_excel(config['sample_metadata'], header=0)
 sample_files = pd.read_excel(config['sample_files'], header=0)
 
-fastq_basenames = sample_files['Basename_fastq']
+fastq_basenames = pd.Series(pd.concat([sample_files['Basename_fastq'], sample_files['Basename_fbc_fastq']]), name = 'files')
+fastq_basenames = fastq_basenames[fastq_basenames.notna()]
 
 fastq_df = pd.concat({'old_path' : fastq_basenames,
                       'file' : fastq_basenames.apply(lambda x: os.path.basename(x))},
@@ -22,7 +23,24 @@ fastq_fns = fastq_df['file'].unique().tolist()
 # Files
 fastq_df = fastq_df.drop_duplicates()
 
-runs = sample_files['Run_ID']
+sample_files_nonfbc = sample_files[sample_files['FBC_type'].isna()].copy()
+sample_files_fbc = sample_files[sample_files['FBC_type'].notna()].copy()
+
+# Non-FBC
+sample_files_nonfbc['Well10X_str'] = sample_files_nonfbc['Well10X'].astype(str)
+runs_nonfbc = pd.Series(sample_files_nonfbc['Run_ID'])
+
+# FBC
+sample_files_fbc['Well10X_str'] = sample_files_fbc['Well10X'].astype(str)
+# lookup_fbc = pd.DataFrame(list(zip(sample_files_fbc['Run_ID'],
+#                                    sample_files_fbc[['Run_ID', 'Well10X_str']].agg('-'.join, axis=1))),
+#                           columns = ['Run', 'Run_well']).drop_duplicates()
+# 
+# print(lookup_fbc)
+
+runs_fbc = pd.Series(sample_files_fbc['Run_ID'].unique())
+
+runs = pd.concat([runs_nonfbc, runs_fbc], axis=0)
 
 levels = ["manual_l1","manual_l2","manual_l3","manual_l4"]
 relative_levels = ["manual_l1rNULL", "manual_l2rNULL", "manual_l3rNULL", "manual_l4rNULL", "manual_l2rmanual_l1", "manual_l3rmanual_l1", "manual_l4rmanual_l1", "manual_l3rmanual_l2", "manual_l4rmanual_l2", "manual_l4rmanual_l3"]
@@ -34,6 +52,7 @@ pbmc_pf_tx_paired_tissue_comparisons = ["PMp_PFvPBMC", "PMp_TXvPF", "PMp_TXvPBMC
 
 outputdir = config['output_dir']
 
+include: "rules/fbc_preparation.smk"
 include: "rules/resources.smk"
 include: "rules/cellranger.smk"
 include: "rules/velocyto.smk"
@@ -44,6 +63,8 @@ include: "rules/figures.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
+  run_nonfbc='|'.join([re.escape(x) for x in runs_nonfbc]),
+  run_fbc='|'.join([re.escape(x) for x in runs_fbc]),
   level='|'.join([re.escape(x) for x in levels]),
   tissue='|'.join([re.escape(x) for x in tissues]),
   relative_level='|'.join([re.escape(x) for x in relative_levels]),
@@ -53,32 +74,36 @@ wildcard_constraints:
   
 rule all:
   input:
-    #Preparation (DEBUGGING)
+    #Preparation
     #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
-    #expand("output/cellranger/{run}", run=runs),
-    #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
-    #"output/merged/merged_SeuratObject.Rds",
+    #expand("config/samples/fbcs/{run_fbc}_libraries.csv", run_fbc=runs_fbc)
+    #expand("output/cellranger/{run_nonfbc}", run_nonfbc=runs_nonfbc),
+    #expand("output/cellranger/{run_fbc}", run_fbc=runs_fbc),
+    #expand("output/cellranger/{run}/velocyto/{run}.loom", run=runs),
+    #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), 
+    #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
+    "output/merged/merged_SeuratObject.Rds",
     #"output/curated/curated_SeuratObject.Rds",
     #"output/tx/tx_SeuratObject.Rds",
     #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
     #Analyses
-    expand("{outputdir}/output/analyses/pbmc_pf_tx/da/{pbmc_pf_tx_tissue_comparison}/{pbmc_pf_tx_tissue_comparison}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, relative_level=relative_levels),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx/de/{pbmc_pf_tx_tissue_comparison}/{level}/{pbmc_pf_tx_tissue_comparison}_{level}_pbmc_pf_tx_deseq2_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    expand("{outputdir}/output/analyses/pbmc_pf_tx/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_deseq2_results.Rds", level=levels, tissue=tissues),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, relative_level=relative_levels),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{level}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", level=levels, tissue=tissues),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/da/{pbmc_pf_tx_paired_tissue_comparison}/{pbmc_pf_tx_paired_tissue_comparison}_{relative_level}_pbmc_pf_tx_paired_propeller_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, relative_level=relative_levels),
-    expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/de/{pbmc_pf_tx_paired_tissue_comparison}/{level}/{pbmc_pf_tx_paired_tissue_comparison}_{level}_pbmc_pf_tx_paired_deseq2_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx/da/{pbmc_pf_tx_tissue_comparison}/{pbmc_pf_tx_tissue_comparison}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, relative_level=relative_levels),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx/de/{pbmc_pf_tx_tissue_comparison}/{level}/{pbmc_pf_tx_tissue_comparison}_{level}_pbmc_pf_tx_deseq2_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_deseq2_results.Rds", level=levels, tissue=tissues),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, relative_level=relative_levels),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{level}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", level=levels, tissue=tissues),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/da/{pbmc_pf_tx_paired_tissue_comparison}/{pbmc_pf_tx_paired_tissue_comparison}_{relative_level}_pbmc_pf_tx_paired_propeller_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, relative_level=relative_levels),
+    # expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/de/{pbmc_pf_tx_paired_tissue_comparison}/{level}/{pbmc_pf_tx_paired_tissue_comparison}_{level}_pbmc_pf_tx_paired_deseq2_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
     #Subsets
-    "output/subsets/pbmc_pf_myeloid_SeuratObject.Rds",
-    "output/subsets/pbmc_pf_macrophages_SeuratObject.Rds",
-    "output/subsets/pbmc_pf_tx_t_SeuratObject.Rds",
+    # "output/subsets/pbmc_pf_myeloid_SeuratObject.Rds",
+    # "output/subsets/pbmc_pf_macrophages_SeuratObject.Rds",
+    # "output/subsets/pbmc_pf_tx_t_SeuratObject.Rds",
     #Figures
-    "output/figures/fig_boxplot_tx_l3rl2.svg",
-    "output/figures/fig_boxplot_pf_tx_l3rl2.svg",
-    "output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
-    "output/figures/fig_heatmap_cd4t_markers.svg",
-    "output/figures/tsne_pbmc_pf_tx.csv",
+    # "output/figures/fig_boxplot_tx_l3rl2.svg",
+    # "output/figures/fig_boxplot_pf_tx_l3rl2.svg",
+    # "output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
+    # "output/figures/fig_heatmap_cd4t_markers.svg",
+    # "output/figures/tsne_pbmc_pf_tx.csv",

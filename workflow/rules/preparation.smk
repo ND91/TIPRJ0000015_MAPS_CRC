@@ -43,7 +43,7 @@ rule normalization:
 rule celltype_annotation:
   input:
     seurat_rds_path="output/normalized/{run}_normalized_SeuratObject.Rds",
-    pbmc_rds_path="resources/pf_atlas/pf_atlas_seuratObject.Rds",
+    pbmc_reference_rds="resources/reference_data/pbmc_multimodal.Rds",
   output:
     seurat_annotated_rds_path="output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds",
     seurat_annotated_csv_path="output/cell_metadata/celltype_annotation/{run}_celltype_annotated.csv",
@@ -64,19 +64,19 @@ rule celltype_annotation:
 
 rule sample_metadata_annotate:
   input:
-    seurat_nonfbc_rds="output/cell_metadata/celltype_annotation/{run_nonfbc}_celltype_annotated_SeuratObject.Rds",
+    seurat_nonfbc_rds="output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds",
     sample_metadata=config["sample_metadata"],
   output:
-    seurat_sample_metadata_annotated_rds="output/cell_metadata/sample_metadata_annotation/{run_nonfbc}_sample_metadata_annotated_SeuratObject.Rds",
-    seurat_sample_metadata_annotated_csv="output/cell_metadata/sample_metadata_annotation/{run_nonfbc}_sample_metadata_annotated.csv",
+    seurat_sample_metadata_annotated_rds="output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_SeuratObject.Rds",
+    seurat_sample_metadata_annotated_csv="output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated.csv",
   threads: 
     1
   conda:
     "../envs/r.yaml",
   log:
-    "output/cell_metadata/sample_metadata_annotation/{run_nonfbc}_sample_metadata_annotated.log",
+    "output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated.log",
   benchmark:
-    "output/cell_metadata/sample_metadata_annotation/{run_nonfbc}_sample_metadata_annotated_benchmark.txt"
+    "output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_benchmark.txt"
   resources:
     mem_mb=12000,
   shell:
