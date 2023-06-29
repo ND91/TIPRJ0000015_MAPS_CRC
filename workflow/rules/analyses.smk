@@ -1,3 +1,79 @@
+# HC
+
+rule hc_pfvpbmc_de:
+  input:
+    hc_pbmc_pf_seuratobject_rds="output/subsets/hc_pbmc_pf_SeuratObject.Rds",
+    functions_r="workflow/scripts/functions.R",
+  output:
+    deseq2_list_rds="output/analyses/hc_pfvpbmc/hc_pfvpbmc_{level}_deseq2_list.Rds",
+    degs_xlsx="output/analyses/hc_pfvpbmc/hc_pfvpbmc_{level}_degs.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/analyses/hc_pfvpbmc_de_{level}.log",
+  benchmark:
+    "output/analyses/hc_pfvpbmc_de_{level}_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  params:
+    level="{level}",
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/analyses/hc_pfvpbmc_de.R "{input.hc_pbmc_pf_seuratobject_rds}" "{input.functions_r}" "{params.level}" "{output.deseq2_list_rds}" "{output.degs_xlsx}" &> "{log}"
+    """
+
+rule hc_pf_m1vm2_de:
+  input:
+    hc_pf_mnp_seuratobject_rds="output/subsets/hc_pf_mnp_SeuratObject.Rds",
+    functions_r="workflow/scripts/functions.R",
+  output:
+    deseq2_list_rds="output/analyses/hc_pf_m1vm2_deseq2_list.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/analyses/hc_pf_m1vm2_de.log",
+  benchmark:
+    "output/analyses/hc_pf_m1vm2_de_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/analyses/hc_pf_m1vm2_de.R "{input.hc_pf_mnp_seuratobject_rds}" "{input.functions_r}" "{output.deseq2_list_rds}" &> "{log}"
+    """
+
+# HC & CRC
+
+rule hc_crc_pmp_pf_macrophages_l3_crcpmpvhc_de:
+  input:
+    hc_crc_pmp_pbmc_pf_seuratobject_rds="output/subsets/hc_crc_pmp_{txdonor}_pbmc_pf_SeuratObject.Rds",
+    functions_r="workflow/scripts/functions.R",
+  output:
+    deseq2_list_rds="output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_deseq2_list.Rds",
+    degs_xlsx="output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_degs.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_de.log",
+  benchmark:
+    "output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_de_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/analyses/hc_crc_pmp_pf_macrophages_l3_crcpmpvhc_de.R "{input.hc_crc_pmp_pbmc_pf_seuratobject_rds}" "{input.functions_r}" "{output.deseq2_list_rds}" "{output.degs_xlsx}" &> "{log}"
+    """
+
+
+
+
+
+
 # pbmc_pf_tx: 
 
 ## Differential analyses between tissues for all cells from all included patients.

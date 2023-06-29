@@ -20,10 +20,9 @@ if (class(cnts) == "list") {
   expr_cnts <- expr_cnts[,colnames(expr_cnts) %in% nonzero_cells]
   
   abc_cnts <- cnts$`Antibody Capture`
-  colnames(abc_cnts) <- gsub("-[0-9]$", "", colnames(abc_cnts))
 
   seuratObject <- CreateSeuratObject(counts = expr_cnts, min.cells = 3)
-  seuratObject[["HTO"]] <- CreateAssayObject(counts = abc_cnts)
+  seuratObject[["CITE"]] <- CreateAssayObject(counts = abc_cnts)
 
   seuratObject <- NormalizeData(seuratObject)
 } else {

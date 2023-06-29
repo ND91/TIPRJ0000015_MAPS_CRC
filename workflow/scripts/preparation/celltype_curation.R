@@ -17,13 +17,18 @@ seurat_curated_rds_path <- args[3]
 seuratObject <- readRDS(seurat_rds_path)
 curated_annotations <- read.csv(curated_annotations_csv_path)
 
-seuratObject@meta.data <- seuratObject@meta.data %>%
+seuratObject_curated <- seuratObject
+
+metadata <- seuratObject_curated@meta.data %>%
   dplyr::mutate(cellID = rownames(.)) %>%
   dplyr::left_join(curated_annotations, by = "cellID")
 
-rownames(seuratObject@meta.data) <- seuratObject@meta.data$cellID
+rownames(metadata) <- metadata$cellID
+
+seuratObject_curated@meta.data <- metadata
+seuratObject_curated[["CITE"]] <- seuratObject[["CITE"]]
 
 # Save data
-saveRDS(seuratObject, seurat_curated_rds_path, compress = "gzip")
+saveRDS(seuratObject_curated, seurat_curated_rds_path, compress = "gzip")
 
 sessionInfo()

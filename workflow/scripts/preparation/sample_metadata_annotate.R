@@ -1,31 +1,39 @@
-suppressPackageStartupMessages(require(Seurat))
-suppressPackageStartupMessages(require(dplyr))
+#!/usr/bin/env Rscript
+# The goal of this script is to append the patient metadata.
+
+library(Seurat)
+library(dplyr)
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4) {
-  stop(paste0("Script needs 4 arguments. Current input is:", args))
+if (length(args) != 3) {
+  stop(paste0("Script needs 3 arguments. Current input is:", args))
 }
 
-seurat_RDS_path <- args[1]
-sample_metadata_path <- args[2]
-seurat_sample_metadata_annotated_RDS_path <- args[3]
-seurat_sample_metadata_annotated_csv_path <- args[4]
+seurat_rds <- args[1]
+sample_metadata_xlsx <- args[2]
+seurat_sample_metadata_annotated_rds <- args[3]
 
-seuratObject <- readRDS(seurat_RDS_path)
+seuratObject <- readRDS(seurat_rds)
 
-sample_metadata <- readxl::read_excel(sample_metadata_path)
+sample_metadata <- readxl::read_excel(sample_metadata_xlsx)
 
-## Add sample metadata and add extra columns introduced by HTOdemultiplex to facilitate merging later only
-seuratObject@meta.data <- seuratObject@meta.data %>%
+seuratObject_annotated <- seuratObject
+
+metadata <- seuratObject@meta.data %>%
   dplyr::left_join(sample_metadata, by = "RunID")
 
-seuratObject@meta.data <- seuratObject@meta.data[,order(colnames(seuratObject@meta.data))]
+metadata <- metadata[,order(colnames(metadata))]
 
-rownames(seuratObject@meta.data) <- colnames(seuratObject)
+rownames(metadata) <- colnames(seuratObject_annotated)
 
-DefaultAssay(seuratObject) <- "RNA"
+seuratObject_annotated@meta.data <- metadata
 
-saveRDS(seuratObject, seurat_sample_metadata_annotated_RDS_path, compress = "gzip")
-data.table::fwrite(seuratObject@meta.data, seurat_sample_metadata_annotated_csv_path)
+if("ADT" %in% Assays(seuratObject)){
+  seuratObject_annotated[["CITE"]] <- seuratObject[["CITE"]]
+}
+
+DefaultAssay(seuratObject_annotated) <- "RNA"
+
+saveRDS(seuratObject_annotated, seurat_sample_metadata_annotated_rds, compress = "gzip")
 
 sessionInfo()

@@ -1,0 +1,11 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-seurat=4.1.1
+  - r-readxl=1.4.2
+  - r-getoptlong
+  - r-gridtext
+  - bioconductor-complexheatmap=2.14.0

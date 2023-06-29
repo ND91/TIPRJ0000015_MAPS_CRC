@@ -1,0 +1,11 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-seurat=4.1.1
+  - r-seuratdisk=0.0.9019
+  - r-openxlsx=4.2.3
+  - bioconductor-slingshot
+  - bioconductor-tradeseq

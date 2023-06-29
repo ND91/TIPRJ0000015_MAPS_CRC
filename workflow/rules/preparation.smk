@@ -15,7 +15,7 @@ rule preparation_pbmc_reference:
     mem_mb=40000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/pbmc_multimodal_preparation.R {input.pbmc_reference_h5seurat} {output.pbmc_reference_rds} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/pbmc_multimodal_preparation.R "{input.pbmc_reference_h5seurat}" "{output.pbmc_reference_rds}" &> "{log}"
     """
 
 rule normalization:
@@ -37,16 +37,15 @@ rule normalization:
     runid="{run}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/normalization.R {input.count_path} {output.seurat_rds_path} {params.runid} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/normalization.R "{input.count_path}" "{output.seurat_rds_path}" "{params.runid}" &> "{log}"
     """
 
 rule celltype_annotation:
   input:
-    seurat_rds_path="output/normalized/{run}_normalized_SeuratObject.Rds",
+    seurat_rds="output/normalized/{run}_normalized_SeuratObject.Rds",
     pbmc_reference_rds="resources/reference_data/pbmc_multimodal.Rds",
   output:
-    seurat_annotated_rds_path="output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds",
-    seurat_annotated_csv_path="output/cell_metadata/celltype_annotation/{run}_celltype_annotated.csv",
+    seurat_annotated_rds="output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds",
   threads: 
     1
   conda:
@@ -59,7 +58,7 @@ rule celltype_annotation:
     mem_mb=47000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/celltype_annotation.R {input.seurat_rds_path} {input.pbmc_rds_path} {output.seurat_annotated_rds_path} {output.seurat_annotated_csv_path} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/celltype_annotation.R "{input.seurat_rds}" "{input.pbmc_reference_rds}" "{output.seurat_annotated_rds}" &> "{log}"
     """
 
 rule sample_metadata_annotate:
@@ -68,7 +67,6 @@ rule sample_metadata_annotate:
     sample_metadata=config["sample_metadata"],
   output:
     seurat_sample_metadata_annotated_rds="output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_SeuratObject.Rds",
-    seurat_sample_metadata_annotated_csv="output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated.csv",
   threads: 
     1
   conda:
@@ -81,7 +79,7 @@ rule sample_metadata_annotate:
     mem_mb=12000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/nonfbc_sample_metadata_annotate.R {input.seurat_nonfbc_rds} {input.sample_metadata} {output.seurat_sample_metadata_annotated_rds} {output.seurat_sample_metadata_annotated_csv} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/sample_metadata_annotate.R "{input.seurat_nonfbc_rds}" "{input.sample_metadata}" "{output.seurat_sample_metadata_annotated_rds}" &> "{log}"
     """
  
 rule merge:
@@ -101,7 +99,7 @@ rule merge:
     mem_mb=150000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/merge.R {output.seurat_merged_rds} {input.seurat_rds} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/merge.R "{output.seurat_merged_rds}" {input.seurat_rds} &> "{log}"
     """
 
 rule celltype_curation:
@@ -122,5 +120,28 @@ rule celltype_curation:
     mem_mb=40000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/celltype_curation.R {input.seurat_merged_rds} {input.curated_csv} {output.seurat_curated} &> {log}
+    Rscript --vanilla workflow/scripts/preparation/celltype_curation.R "{input.seurat_merged_rds}" "{input.curated_csv}" "{output.seurat_curated}" &> "{log}"
     """
+    
+# CD45+, Living, singlet, non-proliferating cells
+
+rule live_singlet_nonproliferating_subsetting:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+  output:
+    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/subsets/live_singlet_nonproliferating_subsetting.log",
+  benchmark:
+    "output/subsets/live_singlet_nonproliferating_subsetting_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/subsetting/cd45p_live_singlet_nonproliferating_subsetting.R "{input.seurat_curated_rds}" "{output.live_singlet_nonproliferating_seuratobject_rds}" &> "{log}"
+    """
+

@@ -23,5 +23,4 @@ dependencies:
   - r-ggrastr=1.0.1
   - r-viridis=0.6.2
   - r-rmarkdown=2.14
-  - r-ggrastr=1.0.1
   - r-svglite=2.1.0

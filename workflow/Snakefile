@@ -56,10 +56,14 @@ include: "rules/fbc_preparation.smk"
 include: "rules/resources.smk"
 include: "rules/cellranger.smk"
 include: "rules/velocyto.smk"
+include: "rules/trust4.smk"
 include: "rules/preparation.smk"
-include: "rules/subsetting.smk"
-include: "rules/analyses.smk"
-include: "rules/figures.smk"
+#include: "rules/subsetting.smk"
+#include: "rules/analyses.smk"
+#include: "rules/figures.smk"
+include: "rules/q1_pf_characterization.smk"
+include: "rules/q2_crc_vs_hc.smk"
+include: "rules/q3_pm_tx_characterization.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
@@ -74,36 +78,72 @@ wildcard_constraints:
   
 rule all:
   input:
-    #Preparation
+    # Preparation
     #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
     #expand("config/samples/fbcs/{run_fbc}_libraries.csv", run_fbc=runs_fbc)
     #expand("output/cellranger/{run_nonfbc}", run_nonfbc=runs_nonfbc),
     #expand("output/cellranger/{run_fbc}", run_fbc=runs_fbc),
     #expand("output/cellranger/{run}/velocyto/{run}.loom", run=runs),
+    #expand("output/trust4/{run}", run=runs),
+    #expand("output/trust4/{run}/{run}_barcode_annotated_airr.csv", run=runs),
+    "output/trust4/trust4_barcode_annotated_airr.csv",
     #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), 
     #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
-    "output/merged/merged_SeuratObject.Rds",
+    #expand("output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_SeuratObject.Rds", run=runs),
+    #"output/merged/merged_SeuratObject.Rds",
     #"output/curated/curated_SeuratObject.Rds",
     #"output/tx/tx_SeuratObject.Rds",
     #"output/pbmc_pf_tx_paired/pbmc_pf_tx_paired_SeuratObject.Rds",
-    #Analyses
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx/da/{pbmc_pf_tx_tissue_comparison}/{pbmc_pf_tx_tissue_comparison}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, relative_level=relative_levels),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx/de/{pbmc_pf_tx_tissue_comparison}/{level}/{pbmc_pf_tx_tissue_comparison}_{level}_pbmc_pf_tx_deseq2_results.Rds", pbmc_pf_tx_tissue_comparison=pbmc_pf_tx_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_deseq2_results.Rds", level=levels, tissue=tissues),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, relative_level=relative_levels),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}/{level}/{pbmc_pf_tx_cleaned_cd45p_tissue_comparison}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", pbmc_pf_tx_cleaned_cd45p_tissue_comparison=pbmc_pf_tx_cleaned_cd45p_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/da/PMpvPMn/PMpvPMn_{tissue}_{relative_level}_pbmc_pf_tx_cleaned_cd45p_propeller_results.Rds", relative_level=relative_levels, tissue=tissues),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_cleaned_cd45p/de/PMpvPMn/{level}/PMpvPMn_{tissue}_{level}_pbmc_pf_tx_cleaned_cd45p_deseq2_results.Rds", level=levels, tissue=tissues),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/da/{pbmc_pf_tx_paired_tissue_comparison}/{pbmc_pf_tx_paired_tissue_comparison}_{relative_level}_pbmc_pf_tx_paired_propeller_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, relative_level=relative_levels),
-    # expand("{outputdir}/output/analyses/pbmc_pf_tx_paired/de/{pbmc_pf_tx_paired_tissue_comparison}/{level}/{pbmc_pf_tx_paired_tissue_comparison}_{level}_pbmc_pf_tx_paired_deseq2_results.Rds", pbmc_pf_tx_paired_tissue_comparison=pbmc_pf_tx_paired_tissue_comparisons, level=levels), #It is important that the comparisons are separated by a "v".
-    #Subsets
-    # "output/subsets/pbmc_pf_myeloid_SeuratObject.Rds",
-    # "output/subsets/pbmc_pf_macrophages_SeuratObject.Rds",
-    # "output/subsets/pbmc_pf_tx_t_SeuratObject.Rds",
-    #Figures
+    # Q1: PF characterization
+    # "output/subsets/hc_pf_SeuratObject.Rds",
+    # "output/subsets/hc_pbmc_pf_SeuratObject.Rds",
+    "output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
+    expand("output/q1_pf_characterization/subsets/hc_pf_{subset}_SeuratObject.Rds", subset = ["T","NKILC","Myeloid","MNP"]),
+    "output/q1_pf_characterization/figures/umap_hc_pbmc_pf_coltissue.pdf",
+    expand("output/q1_pf_characterization/figures/umap_hc_pbmc_pf_col{level}_splittissue.pdf", level = ["manual_l1","manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/figures/umap_hc_total_pf_col{level}.pdf", level = ["manual_l1","manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/figures/dotplot_markerexpression_hc_pbmc_pf_{level}.pdf", level = ["manual_l1","manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/figures/heatmap_markerexpression_hc_pbmc_pf_{level}.pdf", level = ["manual_l1","manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/figures/boxplot_hc_pbmc_pf_abundance_{comparison}.pdf", comparison = ["l1rl0","l2rl0","l3rl0","l2rl1","l3rl1"]),
+    "output/q1_pf_characterization/figures/boxplot_hc_pbmc_pf_colon_liver_abundance.pdf",
+    expand("output/q1_pf_characterization/figures/stackedbarplot_hc_pbmc_pf_abundance_{level}.pdf", level = ["manual_l1","manual_l2","manual_l3"]),
+    "output/q1_pf_characterization/figures/stackedbarplot_hc_pbmc_pf_colon_liver_abundance.pdf",
+    expand("output/q1_pf_characterization/figures/heatmap_hc_pbmc_pf_abundance_{comparison}_scaled.pdf", comparison = ["l1rl0","l2rl0","l3rl0","l2rl1","l3rl1"]),
+    "output/q1_pf_characterization/figures/violinplot_hc_mnp_markerexpression_pf.pdf",
+    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{level}_deseq2_list.Rds", level = ["manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{level}_fgsea_list.Rds", level = ["manual_l2","manual_l3"]),
+    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{comparison}_dacs_list.Rds", comparison = ["l3rl0"]),
+    expand("output/q1_pf_characterization/analyses/hc_pfvlivervcolon_{comparison}_dacs_list.Rds", comparison = ["l3rl0", "l2rl0"]),
+    #expand("output/q1_pf_characterization/figures/arrowplot_hc_pfvpbmc_{level}_arrowplot_top5sig.pdf", level = ["manual_l2","manual_l3"]),
+    #"output/analyses/hc_pf_m1vm2_deseq2_list.Rds",
+    # Q2: CRC vs HC
+    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pbmc_pf_SeuratObject.Rds",
+    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pbmc_pf_monocytes_macrophages_SeuratObject.Rds",
+    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds",
+    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages_SeuratObject.Rds",
+    expand("output/q2_crc_vs_hc/analyses/dacs_crcvhc_{tissue}_{comparison}_list.Rds", tissue = ["PBMC", "PF"], comparison = ["l3rl0","l3rl1","l4rl0","l4rl1","l4rl2"]),
+    expand("output/q2_crc_vs_hc/analyses/fgsea_crcvhc_{tissue}_{level}_list.Rds", tissue = ["PBMC", "PF"], level = ["manual_l2","manual_l3","manual_l4"]),
+    "output/q2_crc_vs_hc/analyses/hc_crcpmp_pbmc_pf_monocytes_macrophages_sce_ss.Rds",
+    # expand("output/q1_pf_characterization/figures_crc/hc_crc_pmp_{txdonor}_col{level}_umap_pf_colcelltype_splitgroup.pdf", txdonor=["txonly","alltx"], level = ["manual_l1","manual_l2","manual_l3"]),
+    # expand("output/q1_pf_characterization/figures_crc/hc_crc_pmp_{txdonor}_umap_pf_colgroup.pdf", txdonor=["txonly","alltx"]),
+    # expand("output/q1_pf_characterization/figures_crc/hc_crc_pmp_{txdonor}_boxplot_pbmc_pf_abundance_{comparison}.pdf", txdonor=["txonly","alltx"], comparison = ["l1rl0","l2rl0","l3rl0","l2rl1","l3rl1","l4rl0","l4rl1","l4rl2"]),
+    # expand("output/q1_pf_characterization/figures_crc/hc_crc_pmp_{txdonor}_boxplot_pf_macrophage_l4rl2_abundance.pdf", txdonor=["txonly","alltx"]),
+    # #expand("output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_deseq2_list.Rds", txdonor=["txonly","alltx"]),
+    # expand("output/q1_pf_characterization/figures_crc/hc_crc_pmp_{txdonor}_volcanoplot_pf_crcpmpvhc.pdf", txdonor=["txonly","alltx"]),
+    # # Q3: PM TX characterization
+    "output/q3_pm_tx_characterization/subsets/crc_pbmc_pf_tx_paired_SeuratObject.Rds",
+    "output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
+    "output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_sce_ss.Rds",
+    # "output/subsets/crc_tx_SeuratObject.Rds",
+    # "output/subsets/crc_tx_myeloid_SeuratObject.Rds",
+    # "output/subsets/crc_tx_macrophages_SeuratObject.Rds",
+    # "output/figures/crc/crc_heatmap_patient_metadata.pdf",
+    # expand("output/figures/crc/crc_umap_pbmc_pf_tx_paired_col{level}_splittissue.pdf", level = ["manual_l2","manual_l3"]),
+    # expand("output/figures/crc/crc_upset_t_clonotype_abundance_{patient}.pdf", patient = ["all", "pt31", "pt35", "pt37", "pt71", "pt73", "pt74", "pt76", "pt78"]),
+    # "output/figures/crc/crc_boxplot_t_pairwise_clonotype_abundance.pdf",
+    # expand("output/figures/crc/crc_boxplot_tx_abundance.pdf"),
+    # expand("output/figures/crc/crc_boxplot_tx_myeloid_abundance.pdf"),
     # "output/figures/fig_boxplot_tx_l3rl2.svg",
     # "output/figures/fig_boxplot_pf_tx_l3rl2.svg",
     # "output/figures/fig_boxplot_pbmc_pf_l3rl2.svg",
     # "output/figures/fig_heatmap_cd4t_markers.svg",
-    # "output/figures/tsne_pbmc_pf_tx.csv",

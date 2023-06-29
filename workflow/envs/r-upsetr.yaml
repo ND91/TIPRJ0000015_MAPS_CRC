@@ -1,0 +1,10 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-readxl=1.4.2
+  - r-upsetr=1.4.0
+  - r-dplyr=1.1.1
+  - bioconductor-complexheatmap=2.14.0

@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
-# The goal of this script is to annotate cells using the PBMC reference set provided by Hao et al. 2021 alongside some other annotations
+# The goal of this script is to annotate cells using the PBMC reference set provided by Hao et al. 2021 alongside some other annotations.
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4) {
-  stop(paste0("Script needs 4 arguments. Current input is:", args))
+if (length(args) != 3) {
+  stop(paste0("Script needs 3 arguments. Current input is:", args))
 }
 
 suppressPackageStartupMessages(library(Seurat))
@@ -13,7 +13,6 @@ suppressPackageStartupMessages(library(dplyr))
 seurat_rds_path <- args[1]
 reference_rds_path <- args[2]
 seurat_annotated_rds_path <- args[3]
-seurat_annotated_csv_path <- args[4]
 
 seuratObject <- readRDS(seurat_rds_path)
 
@@ -55,21 +54,21 @@ ref_anchors <- FindTransferAnchors(
 predictions <- TransferData(anchorset = ref_anchors , 
                             reference = reference_seuratObject,
                             refdata = list(
-                              celltype_l1 = "celltype_l1",
-                              celltype_l2 = "celltype_l2",
-                              celltype_l3 = "celltype_l3",
-                              celltype_l4 = "celltype_l4")
+                              celltype.l1 = "celltype.l1",
+                              celltype.l2 = "celltype.l2",
+                              celltype.l3 = "celltype.l3",
+                              celltype.l4 = "celltype.l4")
                             )
   
 seuratObject@meta.data <- seuratObject@meta.data %>%
-  dplyr::mutate(celltype_l1 = predictions$celltype_l1$predicted.id,
-                celltype_l1_score = predictions$celltype_l1$prediction.score.max, 
-                celltype_l2 = predictions$celltype_l2$predicted.id, 
-                celltype_l2_score = predictions$celltype_l2$prediction.score.max, 
-                celltype_l3 = predictions$celltype_l3$predicted.id, 
-                celltype_l3_score = predictions$celltype_l3$prediction.score.max,
-                celltype_l4 = predictions$celltype_l4$predicted.id, 
-                celltype_l4_score = predictions$celltype_l4$prediction.score.max)
+  dplyr::mutate(celltype.l1 = predictions$celltype.l1$predicted.id,
+                celltype.l1_score = predictions$celltype.l1$prediction.score.max, 
+                celltype.l2 = predictions$celltype.l2$predicted.id, 
+                celltype.l2_score = predictions$celltype.l2$prediction.score.max, 
+                celltype.l3 = predictions$celltype.l3$predicted.id, 
+                celltype.l3_score = predictions$celltype.l3$prediction.score.max,
+                celltype.l4 = predictions$celltype.l4$predicted.id, 
+                celltype.l4_score = predictions$celltype.l4$prediction.score.max)
 rownames(seuratObject@meta.data) <- colnames(seuratObject)
 
 cell_metadata <- seuratObject@meta.data
@@ -85,6 +84,5 @@ seuratObject <- SCTransform(seuratObject, verbose = FALSE, conserve.memory = TRU
 
 # Save data
 saveRDS(seuratObject, seurat_annotated_rds_path, compress = "gzip")
-data.table::fwrite(cell_metadata, seurat_annotated_csv_path)
 
 sessionInfo()
