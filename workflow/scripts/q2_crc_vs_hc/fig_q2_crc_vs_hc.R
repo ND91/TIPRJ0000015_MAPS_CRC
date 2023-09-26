@@ -10,22 +10,25 @@ require(ggrepel)
 require(ggpubr)
 require(viridis)
 require(ggblend)
+require(SummarizedExperiment)
 
 seurat_hc_crcpmp_pf_rds <- args[1]
 seurat_hc_crcpmp_pf_macrophages_rds <- args[2]
 dacs_pf_l3rl0_crcpmpvhc_rds <- args[3]
 dacs_pf_l4rl0_crcpmpvhc_rds <- args[4]
-degs_pf_l3_crcpmpvhc_rds <- args[5]
-degs_pf_l4_crcpmpvhc_rds <- args[6]
-fgsea_pf_l4_crcpmpvhc_rds <- args[7]
-celltype_markers_xlsx <- args[8]
+dacs_pf_l4rl2_crcpmpvhc_rds <- args[5]
+degs_pf_l3_crcpmpvhc_rds <- args[6]
+degs_pf_l4_crcpmpvhc_rds <- args[7]
+fgsea_pf_l4_crcpmpvhc_rds <- args[8]
+celltype_markers_xlsx <- args[9]
 
-macrophage_l4 <- c("Macrophages VCAN+", "Macrophages C1Q+", "Macrophages C1Q+SPP1+", "Macrophages C1Q+MAFbright", "Macrophages VCAN+C1Q+")
+macrophage_l4 <- c("Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages VCAN+SPP1+", "Macrophages C1Q+SPP1+")
 
 seurat_hc_crcpmp_pf <- readRDS(seurat_hc_crcpmp_pf_rds)
 seurat_hc_crcpmp_pf_macrophages <- readRDS(seurat_hc_crcpmp_pf_macrophages_rds)
 dacs_pf_l3rl0_crcpmpvhc <- readRDS(dacs_pf_l3rl0_crcpmpvhc_rds)
 dacs_pf_l4rl0_crcpmpvhc <- readRDS(dacs_pf_l4rl0_crcpmpvhc_rds)
+dacs_pf_l4rl2_crcpmpvhc <- readRDS(dacs_pf_l4rl2_crcpmpvhc_rds)
 degs_pf_l3_crcpmpvhc <- readRDS(degs_pf_l3_crcpmpvhc_rds)
 degs_pf_l4_crcpmpvhc <- readRDS(degs_pf_l4_crcpmpvhc_rds)
 fgsea_pf_l4_crcpmpvhc <- readRDS(fgsea_pf_l4_crcpmpvhc_rds)
@@ -78,6 +81,18 @@ celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
 celltype_colors_pf_l3_list <- celltype_order_pf_l3$color
 names(celltype_colors_pf_l3_list) <- celltype_order_pf_l3$number_subset
 
+macrophages_order_pf_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l4",
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_crcpmp_pf_macrophages@meta.data[,"manual_l4"]),
+                !is.na(color)) %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+macrophages_order_pf_l4_list <- macrophages_order_pf_l4$color
+names(macrophages_order_pf_l4_list) <- macrophages_order_pf_l4$number_subset
+
 # Fig UMAP HC CRC PM+ PF color by manual_l3
 
 umap_hc_crcpmp_pf_l3_df <- data.frame(CB = colnames(seurat_hc_crcpmp_pf),
@@ -119,7 +134,7 @@ pdf("umap_hc_crcpmp_pf_l3.pdf", width = 8, height=9)
 print(umap_hc_crcpmp_pf_l3_plotobj)
 dev.off()
 
-# Fig UMAP HC CRC PM+ PF color by manual_l3
+# Fig UMAP HC CRC PM+ PF color by manual_l4
 
 umap_hc_crcpmp_pf_macrophages_l4_df <- data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
                                                   Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
@@ -141,10 +156,11 @@ umap_hc_crcpmp_pf_macrophages_l4_ggplotobj <- umap_hc_crcpmp_pf_macrophages_l4_d
                                y = median(x = UMAP_2)),
                    mapping = aes(label = celltype_number, x = x, y = y),
                    alpha = 1, 
+                   size = 6,
                    show.legend = F) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
-  #scale_color_manual(values = celltype_colors_pf_l3_list) +
-  facet_wrap(~Group, nrow = 2) +
+  scale_color_manual(values = macrophages_order_pf_l4_list) +
+  facet_wrap(~Group, nrow = 1) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -157,7 +173,7 @@ umap_hc_crcpmp_pf_macrophages_l4_ggplotobj <- umap_hc_crcpmp_pf_macrophages_l4_d
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-pdf("umap_hc_crcpmp_pf_macrophages_l4.pdf", width = 5, height=10.5)
+pdf("umap_hc_crcpmp_pf_macrophages_l4.pdf", width = 10, height=5)
 print(umap_hc_crcpmp_pf_macrophages_l4_ggplotobj)
 dev.off()
 
@@ -225,9 +241,9 @@ pdf("heatmap_hc_crcpmp_pf_macrophages_l4_proportion_donor.pdf", width = 3.5, hei
 pheatmap::pheatmap(prop.table(table(umap_hc_crcpmp_pf_macrophages_l4_df$Donor, umap_hc_crcpmp_pf_macrophages_l4_df$manual_l4), margin = 2), display_numbers = T)
 dev.off()
 
-# Fig UMAP HC CRC PM+ PF color by C1QA, VCAN, MAF, SPP1
+# Fig UMAP HC CRC PM+ PF color by C1QA, VCAN, SPP1
 
-umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_df <- data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
+umap_hc_crcpmp_pf_macrophages_markers_df <- data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
                                                                   Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
                                                                   seurat_hc_crcpmp_pf_macrophages@meta.data,
                                                                   expr = GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")["C1QA",],
@@ -237,27 +253,28 @@ umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_df <- data.frame(CB = colnames(
                                 seurat_hc_crcpmp_pf_macrophages@meta.data,
                                 expr = GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")["VCAN",],
                                 Gene = "VCAN"))  %>%
-  dplyr::rows_append(data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
-                                Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
-                                seurat_hc_crcpmp_pf_macrophages@meta.data,
-                                expr = GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")["MAF",],
-                                Gene = "MAF"))  %>%
+  # dplyr::rows_append(data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
+  #                               Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
+  #                               seurat_hc_crcpmp_pf_macrophages@meta.data,
+  #                               expr = GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")["MAF",],
+  #                               Gene = "MAF"))  %>%
   dplyr::rows_append(data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
                                 Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
                                 seurat_hc_crcpmp_pf_macrophages@meta.data,
                                 expr = GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")["SPP1",],
                                 Gene = "SPP1")) %>%
-  dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
+  dplyr::mutate(Gene = factor(Gene, levels = c("VCAN", "C1QA", "SPP1")),
+                expr_rank = rank(expr, ties.method="first"),
                 celltype = factor(manual_l3, levels = celltype_order_pf_l3$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
                 celltype_w_number = factor(celltype_w_number, levels = celltype_order_pf_l3$number_subset))
 
-umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_ggplotobj <- ggplot(umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_df, aes(x = UMAP_1, y = UMAP_2, order = expr_rank)) +
+umap_hc_crcpmp_pf_macrophages_markers_ggplotobj <- ggplot(umap_hc_crcpmp_pf_macrophages_markers_df, aes(x = UMAP_1, y = UMAP_2, order = expr_rank)) +
   geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
   geom_point_rast(data = umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_df %>%
                     dplyr::filter(expr>0), aes(col = expr), show.legend = T, size = 0.25) +
-  facet_wrap(~Gene, ncol = 2) +
+  facet_wrap(~Gene, ncol = 3) +
   #labs(title = "Gene expression") +
   guides(colour = guide_legend(override.aes = list(size = 3),
                                title = "Expression")) +
@@ -274,8 +291,8 @@ umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_ggplotobj <- ggplot(umap_hc_crc
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-pdf("umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1.pdf", width = 6, height=6.5)
-print(umap_hc_crcpmp_pf_macrophages_c1qa_vcan_maf_spp1_ggplotobj)
+pdf("umap_hc_crcpmp_pf_macrophages_markers.pdf", width = 9, height=3.5)
+print(umap_hc_crcpmp_pf_macrophages_markers_ggplotobj)
 dev.off()
 
 # Fig boxplot CRC PM+ vs HC PF manual_l3 relative l0
@@ -444,7 +461,7 @@ crcpmpvhc_pf_l4rl2_proportions_df <- seurat_hc_crcpmp_pf@meta.data %>%
                 Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
                 Ncellperc = Ncellprop*100,
                 Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
-  dplyr::left_join(dacs_df %>%
+  dplyr::left_join(dacs_pf_l4rl2_crcpmpvhc$Macrophages$da %>%
                      dplyr::mutate(celltype = rownames(.)), by = c("manual_l4" = "celltype")) %>%
   dplyr::filter(!is.na(P.Value))
 
@@ -456,7 +473,7 @@ boxplot_crcpmpvhc_pf_l4rl2_separate_ggplotobj <- crcpmpvhc_pf_l4rl2_proportions_
   ggplot(aes(x = Group, y = Ncellperc, col = Group)) +
   geom_boxplot(alpha = 0.5, outlier.shape = NA) +
   geom_point(position = position_dodge(width=0.75), alpha = 0.5) +
-  facet_wrap(~label, scales = "free") +
+  facet_wrap(~label, nrow = 1, scales = "free") +
   labs(y = "%parent") +
   theme_bw() +
   scale_color_manual(values = group_colors) +
@@ -466,7 +483,7 @@ boxplot_crcpmpvhc_pf_l4rl2_separate_ggplotobj <- crcpmpvhc_pf_l4rl2_proportions_
         legend.pos = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-pdf("boxplot_crcpmpvhc_pf_l4rl2_separate.pdf", width = 15, height = 17.5)
+pdf("boxplot_crcpmpvhc_pf_l4rl2_separate.pdf", width = 10, height = 3.5)
 print(boxplot_crcpmpvhc_pf_l4rl2_separate_ggplotobj)
 dev.off()
 
@@ -485,10 +502,10 @@ macrophage_l4_top50_gene_df <- do.call(rbind, lapply(macrophage_l4, function(mac
 }))
 
 
-dotplot_crcpmpvhc_pf_l4_degs_top5_ggplotobj <- macrophage_l4_top5_gene_df %>%
+dotplot_crcpmpvhc_pf_l4_degs_top50_ggplotobj <- macrophage_l4_top50_gene_df %>%
   dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
                 significance = ifelse(pvalue<0.05, "Significant", "NS"),
-                gene = factor(gene, levels = crcpmpvhc_pf_macrophages_l4_top5),
+                gene = factor(gene, levels = crcpmpvhc_pf_macrophages_l4_top50),
                 macrophages = factor(macrophages, levels = macrophage_l4)) %>%
   ggplot(aes(x = macrophages, y = gene)) +
   geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
@@ -501,8 +518,9 @@ dotplot_crcpmpvhc_pf_l4_degs_top5_ggplotobj <- macrophage_l4_top5_gene_df %>%
         legend.pos = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-pdf("dotplot_crcpmpvhc_pf_l4_degs_top5.pdf", width = 4, height = 8)
-print(dotplot_crcpmpvhc_pf_l4_degs_top5_ggplotobj)
+pdf("dotplot_crcpmpvhc_pf_l4_degs_top50.pdf", width = 3.5, height = 27.5)
+#pdf("dotplot_crcpmpvhc_pf_l4_degs_top50.pdf", width = 4, height = 8)
+print(dotplot_crcpmpvhc_pf_l4_degs_top50_ggplotobj)
 dev.off()
 
 # Fig dotplot CRC PM+ vs HC PF macrophages manual_l4 immunosuppressive genes
@@ -569,7 +587,19 @@ crcpmpvhc_pf_macrophages_l4_fgsea_sig_df <- do.call(rbind, lapply(macrophage_l4,
     dplyr::mutate(macrophages = macrophage)
 }))
 
-sig_pwoi <- unique(c("KEGG_OXIDATIVE_PHOSPHORYLATION","KEGG_T_CELL_RECEPTOR_SIGNALING_PATHWAY","KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION","KEGG_PATHWAYS_IN_CANCER","KEGG_CHEMOKINE_SIGNALING_PATHWAY","KEGG_JAK_STAT_SIGNALING_PATHWAY","KEGG_WNT_SIGNALING_PATHWAY","KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION","KEGG_TOLL_LIKE_RECEPTOR_SIGNALING_PATHWAY","KEGG_DNA_REPLICATION","KEGG_B_CELL_RECEPTOR_SIGNALING_PATHWAY","KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS","KEGG_TGF_BETA_SIGNALING_PATHWAY","KEGG_COLORECTAL_CANCER","KEGG_HEDGEHOG_SIGNALING_PATHWAY","KEGG_HEMATOPOIETIC_CELL_LINEAGE","KEGG_REGULATION_OF_ACTIN_CYTOSKELETON","KEGG_OXIDATIVE_PHOSPHORYLATION","KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION","KEGG_OXIDATIVE_PHOSPHORYLATION","KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION","KEGG_CELL_ADHESION_MOLECULES_CAMS","KEGG_HEMATOPOIETIC_CELL_LINEAGE","KEGG_OXIDATIVE_PHOSPHORYLATION","KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION","KEGG_CHEMOKINE_SIGNALING_PATHWAY","KEGG_TYPE_I_DIABETES_MELLITUS","KEGG_JAK_STAT_SIGNALING_PATHWAY","KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION","KEGG_TOLL_LIKE_RECEPTOR_SIGNALING_PATHWAY","KEGG_MAPK_SIGNALING_PATHWAY","KEGG_NEUROACTIVE_LIGAND_RECEPTOR_INTERACTION","KEGG_TYPE_II_DIABETES_MELLITUS","KEGG_PATHWAYS_IN_CANCER","KEGG_OXIDATIVE_PHOSPHORYLATION","KEGG_T_CELL_RECEPTOR_SIGNALING_PATHWAY","KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION","KEGG_PATHWAYS_IN_CANCER","KEGG_CHEMOKINE_SIGNALING_PATHWAY","KEGG_JAK_STAT_SIGNALING_PATHWAY","KEGG_WNT_SIGNALING_PATHWAY","KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION","KEGG_TYPE_II_DIABETES_MELLITUS","KEGG_TOLL_LIKE_RECEPTOR_SIGNALING_PATHWAY","KEGG_DNA_REPLICATION","KEGG_B_CELL_RECEPTOR_SIGNALING_PATHWAY","KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS","KEGG_TGF_BETA_SIGNALING_PATHWAY","KEGG_COLORECTAL_CANCER","KEGG_HEDGEHOG_SIGNALING_PATHWAY","KEGG_HEMATOPOIETIC_CELL_LINEAGE","KEGG_REGULATION_OF_ACTIN_CYTOSKELETON"))
+sig_pwoi <- unique(c("KEGG_OXIDATIVE_PHOSPHORYLATION",
+                     "KEGG_T_CELL_RECEPTOR_SIGNALING_PATHWAY",
+                     "KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION",
+                     "KEGG_PATHWAYS_IN_CANCER",
+                     "KEGG_CHEMOKINE_SIGNALING_PATHWAY",
+                     "KEGG_JAK_STAT_SIGNALING_PATHWAY",
+                     "KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION",
+                     "KEGG_TOLL_LIKE_RECEPTOR_SIGNALING_PATHWAY",
+                     "KEGG_FC_GAMMA_R_MEDIATED_PHAGOCYTOSIS",
+                     "KEGG_TGF_BETA_SIGNALING_PATHWAY",
+                     "KEGG_COLORECTAL_CANCER",
+                     "KEGG_CELL_ADHESION_MOLECULES_CAMS",
+                     "KEGG_MAPK_SIGNALING_PATHWAY"))
 
 dotplot_crcpmpvhc_pf_macrophages_l4_fgsea_sig_ggplotobj <- crcpmpvhc_pf_macrophages_l4_fgsea_sig_df %>%
   dplyr::mutate(direction = ifelse(NES<0, "HC", "CRC+"),
@@ -608,7 +638,224 @@ dotplot_crcpmpvhc_pf_macrophages_l4_fgsea_sig_pwoi_ggplotobj <- crcpmpvhc_pf_mac
         legend.pos = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-pdf("dotplot_crcpmpvhc_pf_macrophages_l4_fgsea_sig_pwoi.pdf", width = 6, height = 7.5)
+pdf("dotplot_crcpmpvhc_pf_macrophages_l4_fgsea_sig_pwoi.pdf", width = 6, height = 5)
 print(dotplot_crcpmpvhc_pf_macrophages_l4_fgsea_sig_pwoi_ggplotobj)
 dev.off()
 
+pwoi_for_genes <- unique(c("KEGG_CHEMOKINE_SIGNALING_PATHWAY",
+                           "KEGG_TGF_BETA_SIGNALING_PATHWAY",
+                           "KEGG_CYTOKINE_CYTOKINE_RECEPTOR_INTERACTION",
+                           "KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION",
+                           "KEGG_COLORECTAL_CANCER",
+                           "KEGG_PATHWAYS_IN_CANCER"))
+
+gs_hs <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:KEGG")
+gs_hs_list <- split(x = gs_hs$gene_symbol, f = gs_hs$gs_name)
+genes_pwoi <- unique(unlist(gs_hs_list[pwoi_for_genes]))
+
+genes_pwoi_de <- lapply(degs_pf_l4_crcpmpvhc[macrophage_l4], function(macrophage){
+  macrophage$degs %>%
+    data.frame() %>%
+    #$dplyr::filter(pvalue<0.05 & gene %in% genes_pwoi)
+    dplyr::filter(padj<0.05 & gene %in% genes_pwoi)
+})
+
+genes_pwoi_de_sig <- unique(do.call(rbind, genes_pwoi_de)$gene)
+
+genes_pwoi_bin <- data.frame(do.call(cbind, lapply(gs_hs_list[pwoi_for_genes], function(pwoi){genes_pwoi_de_sig %in% pwoi})))
+rownames(genes_pwoi_bin) <- genes_pwoi_de_sig
+colnames(genes_pwoi_bin) <- pwoi_for_genes
+
+pwoi_pw <- data.frame(gene = rownames(genes_pwoi_bin), 
+                      pathway = apply(genes_pwoi_bin, MARGIN = 1, function(gene){colnames(genes_pwoi_bin)[min(which(gene))]}))
+
+dotplot_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophage_l4, function(macrophage){
+  degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
+    data.frame() %>%
+    dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
+    dplyr::select(stat, pvalue, padj, gene) %>%
+    dplyr::mutate(macrophages = macrophage)
+})) %>%
+  dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
+                significance = ifelse(pvalue<0.05, "Significant", "NS"),
+                macrophages = factor(macrophages, levels = macrophage_l4)) %>%
+  dplyr::left_join(pwoi_pw, by = "gene") %>%
+  ggplot(aes(x = macrophages, y = gene)) +
+  geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
+  theme_bw() +
+  facet_grid(pathway~., space = "free", scales = "free") +
+  scale_color_manual(values = group_colors) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.pos = "right",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+pdf("dotplot_crcpmpvhc_pf_l4_goi.pdf", width = 3.5, height = 25)
+print(dotplot_crcpmpvhc_pf_l4_goi_ggplotobj)
+dev.off()
+
+heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophage_l4, function(macrophage){
+  degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
+    data.frame() %>%
+    dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
+    dplyr::select(stat, pvalue, padj, gene) %>%
+    dplyr::mutate(macrophages = macrophage)
+})) %>%
+  dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
+                significance = ifelse(pvalue<0.05, "Significant", "NS"),
+                macrophages = factor(macrophages, levels = macrophage_l4)) %>%
+  dplyr::left_join(pwoi_pw, by = "gene") %>%
+  ggplot(aes(x = macrophages, y = gene)) +
+  #geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
+  geom_tile(aes(fill = stat, alpha = significance)) +
+  theme_bw() +
+  facet_grid(pathway~., space = "free", scales = "free") +
+  scale_fill_gradient2(low = group_colors["HC"],
+                       mid = "white",
+                       high = group_colors["CRC+"],
+                       midpoint = 0) +
+  #scale_fill_viridis() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.pos = "right",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+#pdf("heatmap_crcpmpvhc_pf_l4_goi.pdf", width = 3.5, height = 25)
+pdf("heatmap_crcpmpvhc_pf_l4_goi.pdf", width = 3.5, height = 9)
+print(heatmap_crcpmpvhc_pf_l4_goi_ggplotobj)
+dev.off()
+
+# Macrophage marker dotplot
+
+macrophage_markers <- data.frame(gene = c("VEGFA", "IL10", "SOCS3", "PIM1", "HIF1A", "FOS", "TGFB1", "PDL1", "SEMA3A", "IL10RB", "ACVRB", "FLT1", "TGFBR1"),
+                                 type = c("Ligand", "Ligand", "Ligand", "Ligand", "Ligand", "Ligand", "Ligand", "Ligand", "Ligand", "Receptor", "Receptor", "Receptor", "Receptor"))
+
+dotplot_crcpmpvhc_pf_l4_macrophagemarker_ggplotobj <- do.call(rbind, lapply(macrophage_l4, function(macrophage){
+  degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
+    data.frame() %>%
+    dplyr::filter(gene %in% macrophage_markers$gene) %>%
+    dplyr::select(stat, pvalue, padj, gene) %>%
+    dplyr::mutate(macrophages = macrophage)
+})) %>% 
+  dplyr::left_join(macrophage_markers, by = "gene") %>%
+  dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
+                significance = ifelse(pvalue<0.05, "Significant", "NS"),
+                macrophages = factor(macrophages, levels = macrophage_l4)) %>%
+  ggplot(aes(x = macrophages, y = gene)) +
+  geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
+  theme_bw() +
+  facet_grid(type~., space = "free", scales = "free") +
+  scale_color_manual(values = group_colors) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.pos = "right",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+pdf("dotplot_crcpmpvhc_pf_l4_macrophagemarkers.pdf", width = 3.5, height = 5)
+print(dotplot_crcpmpvhc_pf_l4_macrophagemarker_ggplotobj)
+dev.off()
+
+# Macrophage marker boxplot
+
+boxplot_crcpmpvhc_pf_l4_macrophagemarker_df <- do.call(rbind, lapply(macrophage_l4, function(macrophage){
+  expr_df <- degs_pf_l4_crcpmpvhc[[macrophage]]$dds %>%
+    DESeq2::rlog() %>%
+    assay() %>%
+    data.frame(., gene = rownames(.)) %>%
+    dplyr::filter(gene %in% macrophage_markers$gene) %>%
+    tidyr::pivot_longer(!gene, values_to = "expr", names_to = "SampleID") %>%
+    dplyr::left_join(degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
+                       data.frame() %>%
+                       dplyr::filter(gene %in% macrophage_markers$gene), 
+                     by = "gene") %>%
+    dplyr::mutate(macrophages = macrophage,) %>%
+    dplyr::left_join(degs_pf_l4_crcpmpvhc[[macrophage]]$dds %>%
+                       colData() %>%
+                       data.frame() %>%
+                       dplyr::mutate(Group = factor(ifelse(Group == "CRCp", "CRC+", "HC"), levels = c("HC", "CRC+"))),
+                     by = "SampleID")
+})) 
+
+boxplot_crcpmpvhc_pf_l4_macrophagemarker_ggplotobj <- boxplot_crcpmpvhc_pf_l4_macrophagemarker_df %>%
+  dplyr::mutate(label = paste0(gene, "\n", macrophages, "\np-value = ", formatC(pvalue, format = "e", digits = 2)),
+                label = factor(label, levels = unique(label))) %>%
+  ggplot(aes(x = Group, y = expr)) +
+  geom_boxplot(outlier.shape = NA, aes(col = Group)) +
+  geom_point(position = position_dodge(width=0.75)) +
+  facet_wrap(~label, scales = "free") +
+  labs(y = "Expression") +
+  theme_bw() +
+  scale_color_manual(values = group_colors) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+# boxplot_crcpmpvhc_pf_l4_macrophagemarker_ggplotobj <- boxplot_crcpmpvhc_pf_l4_macrophagemarker_df %>% 
+#   dplyr::left_join(macrophage_markers, by = "gene") %>%
+#   # dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
+#   #               significance = ifelse(pvalue<0.05, "Significant", "NS"),
+#   #               macrophages = factor(macrophages, levels = macrophage_l4)) %>%
+#   ggplot(aes(x = Group, y = expr)) +
+#   geom_boxplot(aes(col = Group)) +
+#   geom_point() +
+#   theme_bw() +
+#   facet_grid(gene~macrophages, space = "free", scales = "free") +
+#   scale_color_manual(values = group_colors) +
+#   theme(panel.grid.major = element_blank(), 
+#         panel.grid.minor = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank(),
+#         legend.pos = "right",
+#         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+pdf("boxplot_crcpmpvhc_pf_l4_macrophagemarker.pdf", width = 15, height = 20)
+print(boxplot_crcpmpvhc_pf_l4_macrophagemarker_ggplotobj)
+dev.off()
+
+#Basal expression
+
+macrophage_macrophagemarker_gex <- GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_hc_crcpmp_pf_macrophages, assay = "RNA")) %in% macrophage_markers$gene), ]
+dotplot_pf_l4_macrophagemarker_ggplotobj <- data.frame(FeatureID = rownames(macrophage_macrophagemarker_gex), macrophage_macrophagemarker_gex) %>%
+  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
+  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_crcpmp_pf_macrophages@meta.data), 
+                               Celltype = seurat_hc_crcpmp_pf_macrophages@meta.data[,"manual_l4"]), 
+                    by = "CB") %>%
+  dplyr::mutate(Celltype = factor(Celltype), 
+                FeatureID = factor(FeatureID)) %>%
+  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
+  dplyr::summarize(Median = median(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
+                Percentage = ifelse(is.na(Percentage), 0, Percentage),
+                Celltype = factor(Celltype, macrophage_l4)) %>% 
+  dplyr::left_join(macrophage_markers, by = c("FeatureID" = "gene")) %>%
+  ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
+  geom_tile(alpha = 0, col = "grey") +
+  geom_point(aes(size = Percentage)) +
+  theme_bw() +
+  facet_grid(type~., space = "free", scales = "free") +
+  theme(legend.pos = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.spacing.x=unit(0, "lines"))
+
+pdf("dotplot_pf_l4_macrophagemarker.pdf", width = 2, height=5)
+print(dotplot_pf_l4_macrophagemarker_ggplotobj)
+dev.off()

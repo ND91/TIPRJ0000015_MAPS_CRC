@@ -17,7 +17,7 @@ seuratObject <- readRDS(seurat_rds_path)
 
 selected_cells <- seuratObject@meta.data %>%
   dplyr::filter(manual_l1 %in% c("B", "Myeloid", "NK/ILC", "T"),
-                !manual_l2 %in% c("Granulocytes"),
+                #!manual_l2 %in% c("Granulocytes"),
                 !manual_l4 %in% c("NK/ILC proliferating", "T proliferating", "DC proliferating", "Macrophages proliferating", "CD8 T memory proliferating", "T apoptotic", "Platelets"),
   )
 

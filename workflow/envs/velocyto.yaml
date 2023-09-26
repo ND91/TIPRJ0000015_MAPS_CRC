@@ -4,3 +4,4 @@ channels:
   - defaults
 dependencies:
   - velocyto.py=0.17.17
+  - scvelo

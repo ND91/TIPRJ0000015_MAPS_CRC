@@ -22,29 +22,6 @@ rule subsetting_hc_pbmc_pf:
     Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pbmc_pf.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_pbmc_pf_seuratobject_rds}" &> "{log}"
     """
 
-### Subset the l1 B and myeloid cells
-# expand("output/subsets/hc_pbmc_pf_{l1}_SeuratObject.Rds", l1 = ["B", "Myeloid"])
-
-rule subsetting_hc_pbmc_pf_l1:
-  input:
-    hc_pbmc_pf_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds",
-  output:
-    hc_pbmc_pf_l1_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pbmc_pf_{l1}_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/q1_pf_characterization/subsets/subsetting_hc_pbmc_pf_{l1}.log",
-  benchmark:
-    "output/q1_pf_characterization/subsets/subsetting_hc_pbmc_pf_{l1}_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pbmc_pf_l1.R "{input.hc_pbmc_pf_seuratobject_rds}" "{output.hc_pbmc_pf_l1_seuratobject_rds}" &> "{log}"
-    """
-
 rule subsetting_hc_pf:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
@@ -87,13 +64,33 @@ rule subsetting_hc_pf_subset:
     Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pf_subset.R "{input.hc_pf_seuratobject_rds}" "{params.subset}" "{output.hc_pf_subset_seuratobject_rds}" &> "{log}"
     """
     
+rule subsetting_hc_pf_macrophages:
+  input:
+    hc_pf_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
+  output:
+    hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q1_pf_characterization/subsets/subsetting_hc_pf_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/subsets/subsetting_hc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pf_macrophages.R "{input.hc_pf_seuratobject_rds}" "{output.hc_pf_macrophages_seuratobject_rds}" &> "{log}"
+    """
+    
 rule combining_pbmc_pf_liver_colon:
   input:
     hc_pbmc_pf_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds",
     liver_seuratobject_rds="resources/liver/liver_reannotated_seuratobject.rds",
     colon_seuratobject_rds="resources/colon/colon_reannotated_seuratobject.rds",
   output:
-    pbmc_pf_liver_colon_subset_seuratobject_rds="output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
+    pbmc_pf_liver_colon_seuratobject_rds="output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
   threads: 
     1
   conda:
@@ -106,8 +103,28 @@ rule combining_pbmc_pf_liver_colon:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q1_pf_characterization/combine_pf_liver_colon.R "{input.hc_pbmc_pf_seuratobject_rds}" "{input.liver_seuratobject_rds}" "{input.colon_seuratobject_rds}" "{output.pbmc_pf_liver_colon_subset_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q1_pf_characterization/combine_pbmc_pf_liver_colon.R "{input.hc_pbmc_pf_seuratobject_rds}" "{input.liver_seuratobject_rds}" "{input.colon_seuratobject_rds}" "{output.pbmc_pf_liver_colon_seuratobject_rds}" &> "{log}"
     """   
+
+rule subsetting_pf_liver_colon_macrophages:
+  input:
+    pbmc_pf_liver_colon_seuratobject_rds="output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
+  output:
+    pbmc_pf_liver_colon_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/pf_liver_colon_macrophages_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q1_pf_characterization/subsets/subsetting_pf_liver_colon_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/subsets/subsetting_pf_liver_colon_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pf_liver_colon_macrophages.R "{input.pbmc_pf_liver_colon_seuratobject_rds}" "{output.pbmc_pf_liver_colon_macrophages_seuratobject_rds}" &> "{log}"
+    """
 
 ############
 # Analyses #
@@ -182,6 +199,27 @@ rule de_fgsea_hc_pfvpbmc:
     Rscript --vanilla workflow/scripts/q1_pf_characterization/de_fgsea_hc_pfvpbmc.R "{input.deseq2_list_rds}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
     """
 
+rule tam_classification_hc_pf_macrophages:
+  input:
+    hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
+    tam_markers_xlsx=config['tam_markers'],
+  output:
+    hc_pf_macrophages_tamannotation_seuratobject_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_tamannotation_SeuratObject.Rds",
+  threads: 
+    8
+  conda:
+    "../envs/r-ucell.yaml",
+  log:
+    "output/q1_pf_characterization/analyses/tam_classification_hc_pf_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/analyses/tam_classification_hc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/tam_classification.R "{input.hc_pf_macrophages_seuratobject_rds}" "{input.tam_markers_xlsx}" "{threads}" "{output.hc_pf_macrophages_tamannotation_seuratobject_rds}" &> "{log}"
+    """
+
 rule da_hc_pfvlivervcolon:
   input:
     pbmc_pf_liver_colon_subset_seuratobject_rds="output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
@@ -210,26 +248,50 @@ rule da_hc_pfvlivervcolon:
     Rscript --vanilla workflow/scripts/q1_pf_characterization/da_hc_pfvlivervcolon.R "{input.pbmc_pf_liver_colon_subset_seuratobject_rds}" "{input.seuratDA_r}" "{params.comparison}" "{output.dacs_anova_rds}" "{output.dacs_anova_csv}" "{output.dacs_livervpf_rds}" "{output.dacs_livervpf_csv}" "{output.dacs_colonvpf_rds}" "{output.dacs_colonvpf_csv}" &> "{log}"
     """
 
-rule de_hc_pf_m1vm2:
+rule de_hc_pfvlivervcolon:
   input:
-    hc_pf_mnp_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_mnp_SeuratObject.Rds",
+    pbmc_pf_liver_colon_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/pf_liver_colon_macrophages_SeuratObject.Rds",
     seuratDE_r="workflow/scripts/functions/seuratDE.R",
   output:
-    deseq2_list_rds="output/q1_pf_characterization/analyses/hc_pf_m1vm2_deseq2_list.Rds",
+    deseq2_pfvliver_list_rds="output/q1_pf_characterization/analyses/hc_pfvliver_manual_l3_deseq2_list.Rds",
+    degs_pfvliver_xlsx="output/q1_pf_characterization/analyses/hc_pfvliver_manual_l3_degs.xlsx",
+    deseq2_pfvcolon_list_rds="output/q1_pf_characterization/analyses/hc_pfvcolon_manual_l3_deseq2_list.Rds",
+    degs_pfvcolon_xlsx="output/q1_pf_characterization/analyses/hc_pfvcolon_manual_l3_degs.xlsx",
   threads: 
     1
   conda:
     "../envs/r-deseq2.yaml",
   log:
-    "output/q1_pf_characterization/analyses/de_hc_pf_m1vm2.log",
+    "output/q1_pf_characterization/analyses/de_hc_pfvlivervcolon_manual_l3.log",
   benchmark:
-    "output/q1_pf_characterization/analyses/de_hc_pf_m1vm2_benchmark.txt",
+    "output/q1_pf_characterization/analyses/de_hc_hc_pfvlivervcolon_manual_l3_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/q1_pf_characterization/de_hc_pf_m1vm2.R "{input.hc_pf_mnp_seuratobject_rds}" "{input.seuratDE_r}" "{output.deseq2_list_rds}" &> "{log}"
+    Rscript --vanilla workflow/scripts/q1_pf_characterization/de_hc_pfvlivervcolon.R "{input.pbmc_pf_liver_colon_macrophages_seuratobject_rds}" "{input.seuratDE_r}" "{output.deseq2_pfvliver_list_rds}" "{output.degs_pfvliver_xlsx}" "{output.deseq2_pfvcolon_list_rds}" "{output.degs_pfvcolon_xlsx}" &> "{log}"
     """
+
+# rule de_hc_pf_m1vm2:
+#   input:
+#     hc_pf_mnp_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_mnp_SeuratObject.Rds",
+#     seuratDE_r="workflow/scripts/functions/seuratDE.R",
+#   output:
+#     deseq2_list_rds="output/q1_pf_characterization/analyses/hc_pf_m1vm2_deseq2_list.Rds",
+#   threads: 
+#     1
+#   conda:
+#     "../envs/r-deseq2.yaml",
+#   log:
+#     "output/q1_pf_characterization/analyses/de_hc_pf_m1vm2.log",
+#   benchmark:
+#     "output/q1_pf_characterization/analyses/de_hc_pf_m1vm2_benchmark.txt",
+#   resources:
+#     mem_mb=60000,
+#   shell:
+#     """
+#     Rscript --vanilla workflow/scripts/q1_pf_characterization/de_hc_pf_m1vm2.R "{input.hc_pf_mnp_seuratobject_rds}" "{input.seuratDE_r}" "{output.deseq2_list_rds}" &> "{log}"
+#     """
 
 ###########
 # Figures #
@@ -560,25 +622,25 @@ rule fig_heatmap_hc_pbmc_pf_abundance:
     Rscript --vanilla workflow/scripts/q1_pf_characterization/fig_heatmap_hc_pbmc_pf_abundance.R "{input.hc_pbmc_pf_seuratobject_rds}" "{params.comparison}" "{output.heatmapplot_hc_pbmc_pf_abundance_scaled_pdf}" "{output.heatmapplot_hc_pbmc_pf_abundance_unscaled_pdf}" &> "{log}"
     """
 
-rule fig_hc_mnp_markerexpression_pf:
-  input:
-    hc_pf_mnp_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_MNP_SeuratObject.Rds",
-  output:
-    violinplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/violinplot_hc_mnp_markerexpression_pf.pdf",
-    boxplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/boxplot_hc_mnp_markerexpression_pf.pdf",
-    dotplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/dotplot_hc_mnp_markerexpression_pf.pdf",
-    umap_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/umap_hc_mnp_markerexpression_pf.pdf",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/q1_pf_characterization/figures/hc_mnp_markerexpression_pf.log",
-  benchmark:
-    "output/q1_pf_characterization/figures/hc_mnp_markerexpression_pf_benchmark.txt",
-  resources:
-    mem_mb=16000,
-  shell:
-    """
-    Rscript --vanilla workflow/scripts/q1_pf_characterization/fig_hc_mnp_markerexpression_pf.R "{input.hc_pf_mnp_seuratobject_rds}" "{output.violinplot_hc_mnp_markerexpression_pf_pdf}" "{output.boxplot_hc_mnp_markerexpression_pf_pdf}" "{output.dotplot_hc_mnp_markerexpression_pf_pdf}" "{output.umap_hc_mnp_markerexpression_pf_pdf}" &> "{log}"
-    """
+# rule fig_hc_mnp_markerexpression_pf:
+#   input:
+#     hc_pf_mnp_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_MNP_SeuratObject.Rds",
+#   output:
+#     violinplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/violinplot_hc_mnp_markerexpression_pf.pdf",
+#     boxplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/boxplot_hc_mnp_markerexpression_pf.pdf",
+#     dotplot_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/dotplot_hc_mnp_markerexpression_pf.pdf",
+#     umap_hc_mnp_markerexpression_pf_pdf="output/q1_pf_characterization/figures/umap_hc_mnp_markerexpression_pf.pdf",
+#   threads: 
+#     1
+#   conda:
+#     "../envs/r.yaml",
+#   log:
+#     "output/q1_pf_characterization/figures/hc_mnp_markerexpression_pf.log",
+#   benchmark:
+#     "output/q1_pf_characterization/figures/hc_mnp_markerexpression_pf_benchmark.txt",
+#   resources:
+#     mem_mb=16000,
+#   shell:
+#     """
+#     Rscript --vanilla workflow/scripts/q1_pf_characterization/fig_hc_mnp_markerexpression_pf.R "{input.hc_pf_mnp_seuratobject_rds}" "{output.violinplot_hc_mnp_markerexpression_pf_pdf}" "{output.boxplot_hc_mnp_markerexpression_pf_pdf}" "{output.dotplot_hc_mnp_markerexpression_pf_pdf}" "{output.umap_hc_mnp_markerexpression_pf_pdf}" &> "{log}"
+#     """

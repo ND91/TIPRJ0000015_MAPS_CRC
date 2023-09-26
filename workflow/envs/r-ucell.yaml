@@ -1,0 +1,12 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-seurat
+  - r-matrix
+  - r-devtools
+  - r-openxlsx
+  - r-tidyverse
+  - r-biocmanager

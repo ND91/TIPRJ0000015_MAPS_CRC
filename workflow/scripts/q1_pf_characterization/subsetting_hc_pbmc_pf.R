@@ -25,9 +25,7 @@ seuratObject_HC_cleaned <- FindClusters(seuratObject_HC_cleaned, resolution = 0.
 seuratObject_HC_cleaned <- RunUMAP(seuratObject_HC_cleaned, dims = 1:67, seed.use = 21346789)
 seuratObject_HC_cleaned[["CITE"]] <- seuratObject_HC[["CITE"]]
 
-DefaultAssay(seuratObject_HC_cleaned) <- "CITE"
-
-seuratObject_HC_cleaned <- NormalizeData(seuratObject_HC_cleaned)
+seuratObject_HC_cleaned <- NormalizeData(seuratObject_HC_cleaned, assay = "CITE", normalization.method = "CLR")
 
 DefaultAssay(seuratObject_HC_cleaned) <- "RNA"
 

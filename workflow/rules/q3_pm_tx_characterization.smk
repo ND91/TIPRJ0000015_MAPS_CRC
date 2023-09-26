@@ -2,195 +2,241 @@
 # Subsetting #
 ##############
 
-rule subsetting_crc_pbmc_pf_tx_paired:
+rule subsetting_crcpmp_pbmc_pf_tx_paired:
   input:
     seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
   output:
-    crc_pbmc_pf_tx_paired_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crc_pbmc_pf_tx_paired_SeuratObject.Rds",
+    crcpmp_pbmc_pf_tx_paired_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pbmc_pf_tx_paired_SeuratObject.Rds",
   threads: 
     1
   conda:
     "../envs/r.yaml",
   log:
-    "output/q3_pm_tx_characterization/subsets/subsetting_crc_pbmc_pf_tx_paired.log",
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pbmc_pf_tx_paired.log",
   benchmark:
-    "output/q3_pm_tx_characterization/subsets/subsetting_crc_pbmc_pf_tx_paired_benchmark.txt",
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pbmc_pf_tx_paired_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crc_pbmc_pf_tx_paired.R "{input.seurat_curated_rds}" "{output.crc_pbmc_pf_tx_paired_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pbmc_pf_tx_paired.R "{input.seurat_curated_rds}" "{output.crcpmp_pbmc_pf_tx_paired_seuratobject_rds}" &> "{log}"
+    """
+
+rule subsetting_crcpmp_pbmc_pf_tx_paired_anndata:
+  input:
+    curated_loom="output/curated/velocyto_curated.loom",
+  output:
+    crcpmp_pbmc_pf_tx_paired_anndata_h5ad="output/q3_pm_tx_characterization/subsets/crcpmp_pbmc_pf_tx_paired_anndata.h5ad",
+  threads: 
+    1
+  conda:
+    "../envs/scvelo.yaml",
+  log:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pbmc_pf_tx_paired_anndata.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pbmc_pf_tx_paired_anndata_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pbmc_pf_tx_paired_anndata.py --curated_loom "{input.curated_loom}" --subset_adata_h5ad "{output.crcpmp_pbmc_pf_tx_paired_anndata_h5ad}" &> "{log}"
+    """
+
+rule subsetting_crcpmp_pf_tx_paired:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+  output:
+    crc_pf_tx_paired_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crc_pf_tx_paired_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pf_tx_paired.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pf_tx_paired_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pf_tx_paired.R "{input.seurat_curated_rds}" "{output.crc_pf_tx_paired_seuratobject_rds}" &> "{log}"
     """
     
-rule crc_pbmc_pf_tx_t_paired_cdr3_subsetting:
+rule subsetting_crcpmp_pf_tx_paired_immune:
+  input:
+    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
+  output:
+    crcpmp_pf_tx_paired_immune_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_immune_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pf_tx_paired_immune.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_pf_tx_paired_immune_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pf_tx_paired_immune.R "{input.seurat_curated_rds}" "{output.crcpmp_pf_tx_paired_immune_seuratobject_rds}" &> "{log}"
+    """
+
+rule subsetting_crcpmp_tx_immune:
+  input:
+    crcpmp_pf_tx_paired_immune_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_immune_SeuratObject.Rds",
+  output:
+    crcpmp_tx_immune_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_tx_immune.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_tx_immune_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_tx.R "{input.crcpmp_pf_tx_paired_immune_seuratobject_rds}" "{output.crcpmp_tx_immune_seuratobject_rds}" &> "{log}"
+    """
+
+rule subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3:
   input:
     airr_merged_csv="output/trust4/trust4_barcode_annotated_airr.csv",
   output:
-    crc_pbmc_pf_tx_t_paired_cdr3_airr_csv="output/trust4/crc_pbmc_pf_tx_t_paired_airr.csv",
+    crcpmp_pbmc_pf_tx_t_paired_cdr3_airr_csv="output/q3_pm_tx_characterization/trust4/crcpmp_pbmc_pf_tx_t_paired_airr.csv",
   threads: 
     1
   conda:
     "../envs/r.yaml",
   log:
-    "output/trust4/crc_pbmc_pf_tx_t_paired_cdr3_subsetting.log",
+    "output/q3_pm_tx_characterization/trust4/subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3.log",
   benchmark:
-    "output/trust4/crc_pbmc_pf_tx_t_paired_cdr3_subsetting_benchmark.txt",
+    "output/q3_pm_tx_characterization/trust4/subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/subsetting/crc_pbmc_pf_tx_t_paired_cdr3_subsetting.R "{input.airr_merged_csv}" "{output.crc_pbmc_pf_tx_t_paired_cdr3_airr_csv}" &> "{log}"
+    Rscript workflow/scripts/subsetting/subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3_subsetting.R "{input.airr_merged_csv}" "{output.crcpmp_pbmc_pf_tx_t_paired_cdr3_airr_csv}" &> "{log}"
     """
     
-rule crc_pbmc_pf_tx_myeloid_paired_subsetting:
+rule subsetting_crcpmp_pf_tx_paired_macrophages:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
   output:
-    crc_pbmc_pf_tx_myeloid_paired_seuratobject_rds="output/subsets/crc_pbmc_pf_tx_myeloid_paired_SeuratObject.Rds",
+    crcpmp_pf_tx_paired_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds",
   threads: 
     1
   conda:
     "../envs/r.yaml",
   log:
-    "output/subsets/crc_pbmc_pf_tx_myeloid_paired_subsetting.log",
+    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pf_tx_paired_macrophages.log",
   benchmark:
-    "output/subsets/crc_pbmc_pf_tx_myeloid_paired_subsetting_benchmark.txt",
+    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pf_tx_paired_macrophages_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/subsetting/crc_pbmc_pf_tx_myeloid_paired_subsetting.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crc_pbmc_pf_tx_myeloid_paired_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pf_tx_paired_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_pf_tx_paired_macrophages_seuratobject_rds}" &> "{log}"
     """
 
-rule subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages:
+rule subsetting_crcpmp_tx_macrophages_subsetting:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
   output:
-    hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
+    crcpmp_tx_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds",
   threads: 
     1
   conda:
     "../envs/r.yaml",
   log:
-    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pbmc_pf_monocytes_macrophages.log",
+    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_subsetting.log",
   benchmark:
-    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pbmc_pf_monocytes_macrophages_benchmark.txt",
+    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_subsetting_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds}" &> "{log}"
-    """
-
-rule crc_tx_subsetting:
-  input:
-    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
-  output:
-    crc_tx_seuratobject_rds="output/subsets/crc_tx_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/subsets/crc_tx_subsetting.log",
-  benchmark:
-    "output/subsets/crc_tx_subsetting_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/subsetting/crc_tx_subsetting.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crc_tx_seuratobject_rds}" &> "{log}"
-    """
-
-rule crc_tx_myeloid_subsetting:
-  input:
-    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
-  output:
-    crc_tx_myeloid_seuratobject_rds="output/subsets/crc_tx_myeloid_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/subsets/crc_tx_myeloid_subsetting.log",
-  benchmark:
-    "output/subsets/crc_tx_myeloid_subsetting_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/subsetting/crc_tx_myeloid_subsetting.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crc_tx_myeloid_seuratobject_rds}" &> "{log}"
-    """
-
-rule crc_tx_macrophages_subsetting:
-  input:
-    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
-  output:
-    crc_tx_macrophages_seuratobject_rds="output/subsets/crc_tx_macrophages_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/subsets/crc_tx_macrophages_subsetting.log",
-  benchmark:
-    "output/subsets/crc_tx_macrophages_subsetting_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/subsetting/crc_tx_macrophages_subsetting.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crc_tx_macrophages_seuratobject_rds}" &> "{log}"
-    """
-
-rule pbmc_pf_tx_subsetting:
-  input:
-    seurat_curated_rds="output/curated/curated_SeuratObject.Rds",
-  output:
-    pbmc_pf_tx_seuratobject_rds="output/subsets/pbmc_pf_tx_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/subsets/pbmc_pf_tx_subsetting.log",
-  benchmark:
-    "output/subsets/pbmc_pf_tx_subsetting_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/subsetting/pbmc_pf_tx_subsetting.R {input.seurat_curated_rds} {output.pbmc_pf_tx_seuratobject_rds} &> {log}
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_tx_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_tx_macrophages_seuratobject_rds}" &> "{log}"
     """
 
 ############
 # Analyses #
 ############
 
-rule hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference:
+rule trajectory_analysis_crcpmp_pf_tx_paired_macrophages:
   input:
-    hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
+    crcpmp_pf_tx_paired_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds",
   output:
-    sce_ss_rds="output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_sce_ss.Rds",
+    crcpmp_pf_tx_paired_macrophages_trajectory_sce_rds="output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_trajectory_sce.Rds",
+    aggregated_lines_csv="output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_macrophages_trajectory_aggregated_lines.csv",
+    tscan_rootcl1_rds="output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_macrophages_trajectory_tscan_rootcl1.Rds",
   threads: 
     1
   conda:
     "../envs/r-trajectory.yaml",
   log:
-    "output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference.log",
+    "output/q3_pm_tx_characterization/analyses/trajectory_analysis_crcpmp_pf_tx_paired_macrophages.log",
   benchmark:
-    "output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference_benchmark.txt",
+    "output/q3_pm_tx_characterization/analyses/trajectory_analysis_crcpmp_pf_tx_paired_macrophages_benchmark.txt",
   resources:
     mem_mb=64000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference.R "{input.hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds}" "{output.sce_ss_rds}" &> "{log}"
+    Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/trajectory_analysis_crcpmp_pf_tx_paired_macrophages.R "{input.crcpmp_pf_tx_paired_macrophages_seuratobject_rds}" "{output.crcpmp_pf_tx_paired_macrophages_trajectory_sce_rds}" "{output.aggregated_lines_csv}" "{output.tscan_rootcl1_rds}" &> "{log}"
+    """
+
+# rule hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference:
+#   input:
+#     hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
+#   output:
+#     sce_ss_rds="output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_sce_ss.Rds",
+#   threads: 
+#     1
+#   conda:
+#     "../envs/r-trajectory.yaml",
+#   log:
+#     "output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference.log",
+#   benchmark:
+#     "output/q3_pm_tx_characterization/analyses/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference_benchmark.txt",
+#   resources:
+#     mem_mb=64000,
+#   shell:
+#     """
+#     Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_inference.R "{input.hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds}" "{output.sce_ss_rds}" &> "{log}"
+#     """
+    
+rule de_crcpmp_txvpf:
+  input:
+    crc_pf_tx_paired_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crc_pf_tx_paired_SeuratObject.Rds",
+    seuratDE_r="workflow/scripts/functions/seuratDE.R",
+  output:
+    deseq2_list_rds="output/q3_pm_tx_characterization/analyses/crcpmp_txvpf_{level}_deseq2_list.Rds",
+    degs_xlsx="output/q3_pm_tx_characterization/analyses/crcpmp_txvpf_{level}_degs.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/q3_pm_tx_characterization/analyses/de_crcpmp_txvpf_{level}.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/analyses/de_crcpmp_txvpf_{level}_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  params:
+    level="{level}",
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/de_crcpmp_txvpf.R "{input.crc_pf_tx_paired_seuratobject_rds}" "{input.seuratDE_r}" "{params.level}" "{output.deseq2_list_rds}" "{output.degs_xlsx}" &> "{log}"
     """
 
 ###########
 # Figures #
 ###########
 
-rule fig_crc_patient_metadata:
+rule fig_crcpmp_patient_metadata:
   input:
     patient_metadata_xlsx=config["patient_metadata"],
   output:
@@ -208,10 +254,10 @@ rule fig_crc_patient_metadata:
     mem_mb=16000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_heatmap_patient_metadata.R "{input.patient_metadata_xlsx}" "{output.crc_heatmap_patient_metadata_pdf}" "{output.crc_heatmap_patient_metadata_nocytof_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_heatmap_patient_metadata.R "{input.patient_metadata_xlsx}" "{output.crc_heatmap_patient_metadata_pdf}" "{output.crc_heatmap_patient_metadata_nocytof_pdf}" &> "{log}"
     """ 
 
-rule fig_crc_umap_pbmc_pf_tx_colcelltype_splittissue:
+rule fig_crcpmp_umap_pbmc_pf_tx_colcelltype_splittissue:
   input:
     crc_pbmc_pf_tx_paired_seuratobject_rds="output/subsets/crc_pbmc_pf_tx_paired_SeuratObject.Rds",
     celltype_markers_xlsx=config['celltype_markers'],
@@ -231,12 +277,12 @@ rule fig_crc_umap_pbmc_pf_tx_colcelltype_splittissue:
     level="{level}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_umap_pbmc_pf_tx_colcelltype_splittissue.R "{input.crc_pbmc_pf_tx_paired_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_umap_pbmc_pf_tx_paired_colcelltype_splittissue_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_umap_pbmc_pf_tx_colcelltype_splittissue.R "{input.crc_pbmc_pf_tx_paired_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_umap_pbmc_pf_tx_paired_colcelltype_splittissue_pdf}" &> "{log}"
     """
 
-rule fig_crc_boxplot_tx_abundance:
+rule fig_crcpmp_boxplot_tx_abundance:
   input:
-    crc_tx_seuratobject_rds="output/subsets/crc_tx_SeuratObject.Rds",
+    crcpmp_tx_seuratobject_rds="output/subsets/crcpmp_tx_SeuratObject.Rds",
     celltype_markers_xlsx=config['celltype_markers'],
   output:
     crc_boxplot_tx_abundance_top5_pdf="output/figures/crc/crc_boxplot_tx_abundance_{level}_top5.pdf",
@@ -256,10 +302,10 @@ rule fig_crc_boxplot_tx_abundance:
     level="{level}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_boxplot_tx_abundance.R "{input.crc_tx_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_boxplot_tx_abundance_top5_pdf}" "{output.crc_boxplot_tx_abundance_top10_pdf}" "{output.crc_boxplot_tx_abundance_all_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_boxplot_tx_abundance.R "{input.crc_tx_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_boxplot_tx_abundance_top5_pdf}" "{output.crc_boxplot_tx_abundance_top10_pdf}" "{output.crc_boxplot_tx_abundance_all_pdf}" &> "{log}"
     """
 
-rule fig_crc_boxplot_myeloid_tx_abundance:
+rule fig_crcpmp_boxplot_myeloid_tx_abundance:
   input:
     crc_myeloid_tx_seuratobject_rds="output/subsets/crc_tx_myeloid_SeuratObject.Rds",
     celltype_markers_xlsx=config['celltype_markers'],
@@ -281,10 +327,10 @@ rule fig_crc_boxplot_myeloid_tx_abundance:
     level="{level}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_boxplot_myeloid_tx_abundance.R "{input.crc_myeloid_tx_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_boxplot_myeloid_tx_abundance_top5_pdf}" "{output.crc_boxplot_myeloid_tx_abundance_top10_pdf}" "{output.crc_boxplot_myeloid_tx_abundance_all_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_boxplot_myeloid_tx_abundance.R "{input.crc_myeloid_tx_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{params.level}" "{output.crc_boxplot_myeloid_tx_abundance_top5_pdf}" "{output.crc_boxplot_myeloid_tx_abundance_top10_pdf}" "{output.crc_boxplot_myeloid_tx_abundance_all_pdf}" &> "{log}"
     """
 
-rule fig_crc_scatterplot_pf_tx_macrophage_l4rl2_pci:
+rule fig_crcpmp_scatterplot_pf_tx_macrophage_l4rl2_pci:
   input:
     crc_pbmc_pf_tx_paired_seuratobject_rds="output/subsets/crc_pbmc_pf_tx_paired_SeuratObject.Rds",
     celltype_markers_xlsx=config['celltype_markers'],
@@ -304,10 +350,10 @@ rule fig_crc_scatterplot_pf_tx_macrophage_l4rl2_pci:
     level="{level}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_scatterplot_macrophage_l4_pci.R "{input.crc_pbmc_pf_tx_paired_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{output.crc_scatterplot_pf_tx_macrophage_l4rl2_pci_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_scatterplot_macrophage_l4_pci.R "{input.crc_pbmc_pf_tx_paired_seuratobject_rds}" "{input.celltype_markers_xlsx}" "{output.crc_scatterplot_pf_tx_macrophage_l4rl2_pci_pdf}" &> "{log}"
     """
 
-rule fig_crc_t_clonotype_abundance:
+rule fig_crcpmp_t_clonotype_abundance:
   input:
     crc_pbmc_pf_tx_t_paired_cdr3_airr_csv="output/trust4/crc_pbmc_pf_tx_t_paired_airr.csv",
   output:
@@ -326,10 +372,10 @@ rule fig_crc_t_clonotype_abundance:
     patient="{patient}",
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_t_clonotype_abundance.R "{input.crc_pbmc_pf_tx_t_paired_cdr3_airr_csv}" "{params.patient}" "{output.crc_upset_t_clonotype_abundance_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_t_clonotype_abundance.R "{input.crc_pbmc_pf_tx_t_paired_cdr3_airr_csv}" "{params.patient}" "{output.crc_upset_t_clonotype_abundance_pdf}" &> "{log}"
     """
 
-rule fig_crc_boxplot_t_pairwise_clonotype_abundance:
+rule fig_crcpmp_boxplot_t_pairwise_clonotype_abundance:
   input:
     crc_pbmc_pf_tx_t_paired_cdr3_airr_csv="output/trust4/crc_pbmc_pf_tx_t_paired_airr.csv",
   output:
@@ -347,7 +393,7 @@ rule fig_crc_boxplot_t_pairwise_clonotype_abundance:
     mem_mb=16000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/figures/fig_crc_boxplot_t_pairwise_clonotype_abundance.R "{input.crc_pbmc_pf_tx_t_paired_cdr3_airr_csv}" "{output.crc_upset_t_clonotype_abundance_pdf}" "{output.crc_upset_t_clonotype_abundance_patanno_pdf}" &> "{log}"
+    Rscript --vanilla workflow/scripts/figures/fig_crcpmp_boxplot_t_pairwise_clonotype_abundance.R "{input.crc_pbmc_pf_tx_t_paired_cdr3_airr_csv}" "{output.crc_upset_t_clonotype_abundance_pdf}" "{output.crc_upset_t_clonotype_abundance_patanno_pdf}" &> "{log}"
     """
 
 

@@ -42,6 +42,26 @@ rule subsetting_hc_crcpmp_pf:
     Rscript workflow/scripts/q2_crc_vs_hc/subsetting_hc_crcpmp_pf.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pf_seuratobject_rds}" &> "{log}"
     """
 
+rule subsetting_crcpmp_pf_macrophages:
+  input:
+    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
+  output:
+    crcpmp_pf_macrophages_seuratobject_rds="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q2_crc_vs_hc/subsets/subsetting_crcpmp_pf_macrophages.log",
+  benchmark:
+    "output/q2_crc_vs_hc/subsets/subsetting_crcpmp_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_crcpmp_pf_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_pf_macrophages_seuratobject_rds}" &> "{log}"
+    """
+
 rule subsetting_hc_crcpmp_pbmc_pf_monocytes_macrophages:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
@@ -158,6 +178,52 @@ rule de_fgsea_crcvhc:
     Rscript --vanilla workflow/scripts/q2_crc_vs_hc/de_fgsea_crcvhc.R "{input.degs_list_rds}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
     """
 
+rule de_fgsea_m1m2_azizi2018_crcvhc_pf_macrophages:
+  input:
+    degs_list_rds="output/q2_crc_vs_hc/analyses/degs_crcvhc_PF_manual_l4_list.Rds",
+    azizi2018_xlsx="config/genes_of_interest/m1_m2_azizi2018.xlsx",
+  output:
+    fgsea_list_rds="output/q2_crc_vs_hc/analyses/fgsea_m1m2_azizi2018_crcvhc_pf_macrophages_list.Rds",
+    fgsea_pws_xlsx="output/q2_crc_vs_hc/analyses/fgsea_m1m2_azizi2018_crcvhc_pf_macrophages_list.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/q2_crc_vs_hc/analyses/de_fgsea_m1m2_azizi2018_crcvhc_pf_macrophages.log",
+  benchmark:
+    "output/q2_crc_vs_hc/analyses/de_fgsea_m1m2_azizi2018_crcvhc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/q2_crc_vs_hc/de_fgsea_m1m2azizi2018_crcvhc.R "{input.degs_list_rds}" "{input.azizi2018_xlsx}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
+    """
+
+rule de_crc_pci_pf_macrophages:
+  input:
+    crc_pf_macrophages_seuratobject_rds="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages_SeuratObject.Rds",
+    seuratDE_r="workflow/scripts/functions/seuratDE.R",
+  output:
+    degs_list_rds="output/q2_crc_vs_hc/analyses/degs_crc_pci_pf_macrophages_{level}_list.Rds",
+    degs_xlsx="output/q2_crc_vs_hc/analyses/degs_crc_pci_pf_macrophages_{level}_degs.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/q2_crc_vs_hc/analyses/de_crc_pci_pf_macrophages_{level}.log",
+  benchmark:
+    "output/q2_crc_vs_hc/analyses/de_crc_pci_pf_macrophages_{level}_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  params:
+    level="{level}"
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/q2_crc_vs_hc/de_crc_pci.R "{input.crc_pf_macrophages_seuratobject_rds}" "{input.seuratDE_r}" "{params.level}" "{output.degs_list_rds}" "{output.degs_xlsx}" &> "{log}"
+    """
+
 rule hc_crcpmp_pbmc_pf_monocytes_macrophages_trajectory_inference:
   input:
     hc_crcpmp_pbmc_pf_monocytes_macrophages_seuratobject_rds="output/q2_crc_vs_hc/subsets/hc_crcpmp_pbmc_pf_monocytes_macrophages_SeuratObject.Rds",
@@ -178,6 +244,30 @@ rule hc_crcpmp_pbmc_pf_monocytes_macrophages_trajectory_inference:
     Rscript --vanilla workflow/scripts/q2_crc_vs_hc/hc_crcpmp_pbmc_pf_monocytes_macrophages_trajectory_inference.R "{input.hc_crcpmp_pbmc_pf_monocytes_macrophages_seuratobject_rds}" "{output.sce_ss_rds}" &> "{log}"
     """
 
+rule hc_crcpmp_pf_nichenet:
+  input:
+    hc_crcpmp_pf_seuratobject_rds="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds",
+    degs_list_rds="output/q2_crc_vs_hc/analyses/degs_crcvhc_PF_manual_l3_list.Rds",
+    lr_network_rds=config['lr_network'],
+    ligand_target_matrix_rds=config['ligand_target_matrix'],
+  output:
+    nichenet_rds="output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_nichenet_{celltype}.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r-nichenet.yaml",
+  log:
+    "output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_nichenet_{celltype}.log",
+  benchmark:
+    "output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_nichenet_{celltype}_benchmark.txt",
+  resources:
+    mem_mb=64000,
+  params:
+    celltype="{celltype}",
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/q2_crc_vs_hc/nichenet_crcvhc.R "{input.hc_crcpmp_pf_seuratobject_rds}" "{params.celltype}" "{input.lr_network_rds}" "{input.ligand_target_matrix_rds}" "{input.degs_list_rds}" "{output.nichenet_rds}" &> "{log}"
+    """
 
 ###########
 # Figures #

@@ -1,0 +1,31 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - anndata
+  - numpy
+  - scipy
+  - cython
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - statsmodels
+  - h5py
+  - click
+  - numba
+  - pytables
+  - python-igraph
+  - leidenalg
+  - pip:
+    - scanpy
+    - louvain
+    - pybind11
+    - hnswlib
+    - velocyto
+    - scvelo
+    - tqdm
+    - ipywidgets

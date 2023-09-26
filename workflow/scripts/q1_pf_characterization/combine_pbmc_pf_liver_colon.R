@@ -50,17 +50,17 @@ seurat_pbmc_pf@meta.data <- seurat_pbmc_pf@meta.data %>%
 
 seurat_pbmc_pf_liver_colon <- Reduce(merge, list(seurat_pbmc_pf, seurat_liver, seurat_colon))
 
-# # Normalize, reduce, and recluster
-# seurat_pbmc_pf_liver_colon <- DietSeurat(seurat_pbmc_pf_liver_colon, counts = T, data = T, scale.data = F)
-# seurat_pbmc_pf_liver_colon <- seurat_pbmc_pf_liver_colon[Matrix::rowSums(seurat_pbmc_pf_liver_colon) != 0, ]
-# 
-# ## RNA
-# DefaultAssay(seurat_pbmc_pf_liver_colon) <- "RNA"
-# seurat_pbmc_pf_liver_colon <- SCTransform(seurat_pbmc_pf_liver_colon, conserve.memory = T)
-# seurat_pbmc_pf_liver_colon <- RunPCA(object = seurat_pbmc_pf_liver_colon, npcs = 100, seed.use = 679844132)
-# seurat_pbmc_pf_liver_colon <- FindNeighbors(seurat_pbmc_pf_liver_colon, reduction = "pca", dims = 1:67)
-# seurat_pbmc_pf_liver_colon <- FindClusters(seurat_pbmc_pf_liver_colon, resolution = 0.5, verbose = FALSE)
-# seurat_pbmc_pf_liver_colon <- RunUMAP(seurat_pbmc_pf_liver_colon, dims = 1:67, seed.use = 21346789)
+# Normalize, reduce, and recluster
+seurat_pbmc_pf_liver_colon <- DietSeurat(seurat_pbmc_pf_liver_colon, counts = T, data = T, scale.data = F)
+seurat_pbmc_pf_liver_colon <- seurat_pbmc_pf_liver_colon[Matrix::rowSums(seurat_pbmc_pf_liver_colon) != 0, ]
+
+## RNA
+DefaultAssay(seurat_pbmc_pf_liver_colon) <- "RNA"
+seurat_pbmc_pf_liver_colon <- SCTransform(seurat_pbmc_pf_liver_colon, conserve.memory = T)
+seurat_pbmc_pf_liver_colon <- RunPCA(object = seurat_pbmc_pf_liver_colon, npcs = 100, seed.use = 679844132)
+seurat_pbmc_pf_liver_colon <- FindNeighbors(seurat_pbmc_pf_liver_colon, reduction = "pca", dims = 1:73)
+seurat_pbmc_pf_liver_colon <- FindClusters(seurat_pbmc_pf_liver_colon, resolution = 0.5, verbose = FALSE)
+seurat_pbmc_pf_liver_colon <- RunUMAP(seurat_pbmc_pf_liver_colon, dims = 1:73, seed.use = 21346789)
 
 # Save data
 saveRDS(seurat_pbmc_pf_liver_colon, seurat_pf_liver_colon_rds, compress = "gzip")

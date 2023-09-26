@@ -1,0 +1,31 @@
+---
+title: "velocyto"
+author: "Andrew Y.F. Li Yim"
+date: "11/25/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(velocyto.R)
+```
+
+```{r cars}
+scs33_1 <- read.loom.matrices(file.path("data", "cellranger_hs", "SCS33-1", "velocyto", "SCS33-1.loom"))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+rvelqg <- gene.relative.velocity.estimates(emat = scs33_1$spliced,
+                                           nmat = scs33_1$unspliced,
+                                           smat = scs33_1$ambiguous,
+                                           deltaT=1,
+                                           kCells = 5,
+                                           fit.quantile = 0.05)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

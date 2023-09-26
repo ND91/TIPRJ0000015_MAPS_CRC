@@ -108,6 +108,7 @@ rule celltype_curation:
     curated_csv=config["curated_celltypes"],
   output:
     seurat_curated="output/curated/curated_SeuratObject.Rds",
+    metadata_csv="output/curated/SeuratObject_metadata.csv",
   threads: 
     1
   conda:
@@ -120,7 +121,7 @@ rule celltype_curation:
     mem_mb=40000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/preparation/celltype_curation.R "{input.seurat_merged_rds}" "{input.curated_csv}" "{output.seurat_curated}" &> "{log}"
+    Rscript --vanilla workflow/scripts/preparation/celltype_curation.R "{input.seurat_merged_rds}" "{input.curated_csv}" "{output.seurat_curated}" "{output.metadata_csv}" &> "{log}"
     """
     
 # CD45+, Living, singlet, non-proliferating cells

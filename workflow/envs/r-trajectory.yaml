@@ -9,3 +9,6 @@ dependencies:
   - r-openxlsx=4.2.3
   - bioconductor-slingshot
   - bioconductor-tradeseq
+  - bioconductor-tscan
+  - bioconductor-scran
+  - bioconductor-scuttle

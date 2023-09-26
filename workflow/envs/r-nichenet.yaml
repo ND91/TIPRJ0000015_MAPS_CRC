@@ -1,0 +1,17 @@
+channels:
+  - bioconda      
+  - conda-forge
+  - defaults
+  - r
+dependencies:
+  - r-seurat=4.1.1
+  - r-devtools=2.4.4
+  - r-openxlsx=4.2.5
+  - r-tidyverse=2.0.0
+  - r-hmisc
+  - r-randomforest
+  - r-mlrmbo
+  - r-ggpubr
+  - bioconductor-deseq2
+  - bioconductor-limma
+  - bioconductor-complexheatmap

@@ -38,6 +38,8 @@ seuratObject_HC_PF_cleaned <- RunUMAP(seuratObject_HC_PF_cleaned, nn.name = "wei
 seuratObject_HC_PF_cleaned <- RunUMAP(seuratObject_HC_PF_cleaned, reduction = 'gex.pca', dims = 1:67, assay = 'RNA', reduction.name = 'gex.umap', reduction.key = 'gexUMAP_')
 seuratObject_HC_PF_cleaned <- RunUMAP(seuratObject_HC_PF_cleaned, reduction = 'cite.pca', dims = 1:140, assay = 'CITE', reduction.name = 'cite.umap', reduction.key = 'citeUMAP_')
 
+seuratObject_HC_PF_cleaned <- NormalizeData(seuratObject_HC_PF_cleaned, assay = "CITE", normalization.method = "CLR")
+
 # Save data
 saveRDS(seuratObject_HC_PF_cleaned, hc_pf_seurat_rds_path, compress = "gzip")
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# The goal of this script is to select the PBMC-, PF-, and TX-derived cells from the CRC patients that provided all three samples.
+# The goal of this script is to select the PF- and TX-derived cells from the CRC patients that provided all three samples.
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2) {
@@ -11,7 +11,7 @@ require(Seurat)
 require(dplyr)
 
 seurat_rds <- args[1]
-crc_pbmc_pf_tx_paired_seurat_rds <- args[2]
+crc_pf_tx_paired_seurat_rds <- args[2]
 
 seuratObject <- readRDS(seurat_rds)
 
@@ -24,8 +24,9 @@ seuratObject <- seuratObject[,seuratObject@meta.data$Donor %in% txdonors]
 
 selected_cells <- seuratObject@meta.data %>%
   dplyr::filter(manual_l1 %in% c("B", "Myeloid", "NK/ILC", "T", "Epithelial"),
-                !manual_l2 %in% c("Granulocytes"),
+                #!manual_l2 %in% c("Granulocytes"),
                 !manual_l4 %in% c("T apoptotic", "Platelets"),
+                Tissue %in% c("PF", "TX")
   )
 
 seuratObject_filtered <- seuratObject[,seuratObject@meta.data$cellID %in% selected_cells$cellID]
@@ -35,12 +36,12 @@ seuratObject_filtered <- DietSeurat(seuratObject_filtered, counts = T, data = T,
 seuratObject_filtered <- seuratObject_filtered[Matrix::rowSums(seuratObject_filtered) != 0, ]
 
 seuratObject_filtered <- SCTransform(seuratObject_filtered, conserve.memory = T)
-seuratObject_filtered <- RunPCA(object = seuratObject_filtered, npcs = 100, seed.use = 2349678)
+seuratObject_filtered <- RunPCA(object = seuratObject_filtered, npcs = 100, seed.use = 6312)
 seuratObject_filtered <- FindNeighbors(seuratObject_filtered, reduction = "pca", dims = 1:52)
 seuratObject_filtered <- FindClusters(seuratObject_filtered, resolution = 0.5, verbose = FALSE)
-seuratObject_filtered <- RunUMAP(seuratObject_filtered, dims = 1:52, seed.use = 8982364)
+seuratObject_filtered <- RunUMAP(seuratObject_filtered, dims = 1:52, seed.use = 7213)
 
 # Save data
-saveRDS(seuratObject_filtered, crc_pbmc_pf_tx_paired_seurat_rds, compress = "gzip")
+saveRDS(seuratObject_filtered, crc_pf_tx_paired_seurat_rds, compress = "gzip")
 
 sessionInfo()

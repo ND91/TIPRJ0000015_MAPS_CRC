@@ -102,26 +102,6 @@ rule hc_pf_subsetting:
     Rscript workflow/scripts/subsetting/hc_pf_subsetting.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_pf_seuratobject_rds}" &> "{log}"
     """
 
-rule hc_pf_mnp_subsetting:
-  input:
-    hc_pf_seuratobject_rds="output/subsets/hc_pf_SeuratObject.Rds",
-  output:
-    hc_pf_mnp_seuratobject_rds="output/subsets/hc_pf_mnp_SeuratObject.Rds",
-  threads: 
-    1
-  conda:
-    "../envs/r.yaml",
-  log:
-    "output/subsets/hc_pf_mnp_subsetting.log",
-  benchmark:
-    "output/subsets/hc_pf_mnp_subsetting_benchmark.txt",
-  resources:
-    mem_mb=60000,
-  shell:
-    """
-    Rscript workflow/scripts/subsetting/hc_pf_mnp_subsetting.R "{input.hc_pf_seuratobject_rds}" "{output.hc_pf_mnp_seuratobject_rds}" &> "{log}"
-    """
-
 ## HC and CRC
 
 rule hc_crc_pmp_pbmc_pf_subsetting:

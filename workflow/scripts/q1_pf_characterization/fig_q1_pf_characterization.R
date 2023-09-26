@@ -9,8 +9,6 @@ require(ggpubr)
 require(viridis)
 
 seurat_pf_rds <- args[1]
-seurat_pf_t_rds <- args[2]
-seurat_pf_nkilc_rds <- args[3]
 seurat_pf_myeloid_rds <- args[4]
 seurat_pbmc_pf_rds <- args[5]
 seurat_pbmc_pf_liver_colon_rds <- args[6]
@@ -20,11 +18,11 @@ livervpf_dacs_l3_csv <- args[9]
 colonvpf_dacs_l3_csv <- args[10]
 celltype_markers_xlsx <- args[11]
 cite_markers_xlsx <- args[12]
-dacs_pbmcvpf_l3rl0_rds <- args[13]
+dacs_pfvpbmc_l3rl0_rds <- args[13]
 
 seurat_pf <- readRDS(seurat_pf_rds)
-seurat_pf_t <- readRDS(seurat_pf_t_rds)
-seurat_pf_nkilc <- readRDS(seurat_pf_nkilc_rds)
+seurat_pf <- NormalizeData(seurat_pf, assay = "CITE", normalization.method = "CLR")
+
 seurat_pf_myeloid <- readRDS(seurat_pf_myeloid_rds)
 seurat_pbmc_pf <- readRDS(seurat_pbmc_pf_rds)
 seurat_pbmc_pf_liver_colon <- readRDS(seurat_pbmc_pf_liver_colon_rds)
@@ -33,7 +31,7 @@ pfvpbmc_fgsea_l3 <- readRDS(pfvpbmc_fgsea_l3_rds)
 livervpf_dacs_l3 <- read.csv(livervpf_dacs_l3_csv)
 colonvpf_dacs_l3 <- read.csv(colonvpf_dacs_l3_csv)
 
-dacs_pbmcvpf_l3rl0 <- readRDS(dacs_pbmcvpf_l3rl0_rds)
+dacs_pfvpbmc_l3rl0 <- readRDS(dacs_pfvpbmc_l3rl0_rds)
 
 manual_l1_order <- readxl::read_excel(celltype_markers_xlsx) %>%
   dplyr::filter(level == "manual_l1") %>%
@@ -66,6 +64,8 @@ celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
   dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l3"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 
+manual_l3_colors <- celltype_order_pf_l3$color
+names(manual_l3_colors) <- celltype_order_pf_l3$celltype
 
 celltype_order_l2 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
   dplyr::filter(level == "manual_l2",
@@ -149,7 +149,7 @@ umap_hc_pf_l3_together_ggplotobj <- umap_hc_pf_together_l3_df %>%
   geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
   labs(y = "",
        x = "") +
-  geom_text_repel(data = umap_hc_pf_together_l3_df %>%
+  geom_label_repel(data = umap_hc_pf_together_l3_df %>%
                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
                     summarize(x = median(x = wnnUMAP_1),
                               y = median(x = wnnUMAP_2)),
@@ -174,133 +174,6 @@ umap_hc_pf_l3_together_ggplotobj <- umap_hc_pf_together_l3_df %>%
 pdf("umap_hc_pf_l3_together.pdf", width = 11, height = 10)
 print(umap_hc_pf_l3_together_ggplotobj)
 dev.off()
-
-# Fig UMAP HC PF color: manual_l3, split: manual_l1
-
-celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
-  dplyr::filter(level == "manual_l3",
-                modality == "gene") %>%
-  dplyr::select(celltype, color) %>%
-  unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l3"])) %>%
-  dplyr::mutate(number = 1:nrow(.),
-                number_subset = paste0(1:nrow(.), ". ", celltype))
-
-celltype_number_colors_pf_l3_list <- celltype_order_pf_l3$color
-names(celltype_number_colors_pf_l3_list) <- celltype_order_pf_l3$number_subset
-
-celltype_colors_pf_l3_list <- celltype_order_pf_l3$color
-names(celltype_colors_pf_l3_list) <- celltype_order_pf_l3$celltype
-
-umap_hc_pf_l3_df <- data.frame(CB = colnames(seurat_pf_t),
-                               Embeddings(seurat_pf_t[["wnn.umap"]]),
-                               seurat_pf_t@meta.data) %>%
-  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_nkilc),
-                                Embeddings(seurat_pf_nkilc[["wnn.umap"]]),
-                                seurat_pf_nkilc@meta.data)) %>%
-  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                seurat_pf_myeloid@meta.data)) %>%
-  dplyr::mutate(celltype = factor(manual_l3, levels = celltype_order_pf_l3$celltype),
-                celltype_number = as.numeric(celltype),
-                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
-                celltype_w_number = factor(celltype_w_number, levels = celltype_order_pf_l3$number_subset))
-
-umap_hc_pf_t_gplotobj <- umap_hc_pf_l3_df %>% 
-  dplyr::filter(manual_l1 == "T") %>%
-  ggplot(aes(x = wnnUMAP_1, y = wnnUMAP_2)) +
-  geom_point_rast(show.legend = T, size = 0.5, col = "black") +
-  geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
-  labs(y = "",
-       x = "") +
-  geom_label_repel(data = umap_hc_pf_l3_df %>%
-                     dplyr::filter(manual_l1 == "T") %>%
-                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
-                     summarize(x = median(x = wnnUMAP_1),
-                               y = median(x = wnnUMAP_2)),
-                   mapping = aes(label = celltype_number, x = x, y = y),
-                   alpha = 1, 
-                   show.legend = F) +
-  guides(colour = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = celltype_number_colors_pf_l3_list) +
-  facet_wrap(~manual_l1, nrow = 3) +
-  theme_minimal() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
-        legend.title = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text.x = element_text(face = "bold"))
-
-umap_hc_pf_nkilc_gplotobj <- umap_hc_pf_l3_df %>% 
-  dplyr::filter(manual_l1 == "NK/ILC") %>%
-  ggplot(aes(x = wnnUMAP_1, y = wnnUMAP_2)) +
-  geom_point_rast(show.legend = T, size = 0.5, col = "black") +
-  geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
-  labs(y = "",
-       x = "") +
-  geom_label_repel(data = umap_hc_pf_l3_df %>%
-                     dplyr::filter(manual_l1 == "NK/ILC") %>%
-                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
-                     summarize(x = median(x = wnnUMAP_1),
-                               y = median(x = wnnUMAP_2)),
-                   mapping = aes(label = celltype_number, x = x, y = y),
-                   alpha = 1, 
-                   show.legend = F) +
-  guides(colour = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = celltype_number_colors_pf_l3_list) +
-  facet_wrap(~manual_l1, nrow = 3) +
-  theme_minimal() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
-        legend.title = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text.x = element_text(face = "bold"))
-
-umap_hc_pf_myeloid_ggplotobj <- umap_hc_pf_l3_df %>% 
-  dplyr::filter(manual_l1 == "Myeloid") %>%
-  ggplot(aes(x = wnnUMAP_1, y = wnnUMAP_2)) +
-  geom_point_rast(show.legend = T, size = 0.5, col = "black") +
-  geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
-  labs(y = "",
-       x = "") +
-  geom_label_repel(data = umap_hc_pf_l3_df %>%
-                     dplyr::filter(manual_l1 == "Myeloid") %>%
-                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
-                     summarize(x = median(x = wnnUMAP_1),
-                               y = median(x = wnnUMAP_2)),
-                   mapping = aes(label = celltype_number, x = x, y = y),
-                   alpha = 1, 
-                   show.legend = F) +
-  guides(colour = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = celltype_number_colors_pf_l3_list) +
-  facet_wrap(~manual_l1, nrow = 3) +
-  theme_minimal() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
-        legend.title = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text.x = element_text(face = "bold"))
-
-umap_hc_pf_l3_gplotobj <- ggarrange(umap_hc_pf_t_gplotobj, 
-                                    umap_hc_pf_nkilc_gplotobj,
-                                    umap_hc_pf_myeloid_gplotobj,
-                                    nrow = 3, 
-                                    align = "hv")
 
 # Fig UMAP HC PF color by CD3 (T), CD56 (NK/ILC), CD20 (B), and CD11b (Myeloid) at both GEX and PEX 
 
@@ -477,12 +350,30 @@ dev.off()
 
 # Fig UMAP HC PF Myeloid color by CD163, MARCO, VSIG4, C5AR1 
 
-umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_df <- data.frame(CB = colnames(seurat_pf_myeloid),
+umap_hc_pf_myeloid_markers_df <- data.frame(CB = colnames(seurat_pf_myeloid),
                                                             Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
                                                             seurat_pf_myeloid@meta.data,
                                                             expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CD163",],
-                                                            Feature = "CD163",
+                                                            Feature = "CD163 (RNA)",
                                                             Modality = "RNA") %>%
+  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
+                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
+                                seurat_pf_myeloid@meta.data,
+                                expr = GetAssayData(seurat_pf_myeloid, assay = "CITE")["Hu.CD163",],
+                                Feature = "CD163 (CITE)",
+                                Modality = "CITE")) %>%
+  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
+                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
+                                seurat_pf_myeloid@meta.data,
+                                expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["C1QA",],
+                                Feature = "C1QA",
+                                Modality = "RNA")) %>%
+  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
+                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
+                                seurat_pf_myeloid@meta.data,
+                                expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["VCAN",],
+                                Feature = "VCAN",
+                                Modality = "RNA")) %>%
   dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
                                 Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
                                 seurat_pf_myeloid@meta.data,
@@ -504,39 +395,56 @@ umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_df <- data.frame(CB = colnames(seurat
   dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
                                 Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
                                 seurat_pf_myeloid@meta.data,
+                                expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CLEC9A",],
+                                Feature = "CLEC9A",
+                                Modality = "RNA")) %>%
+  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
+                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
+                                seurat_pf_myeloid@meta.data,
                                 expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CD1C",],
                                 Feature = "CD1C",
                                 Modality = "RNA")) %>%
+  dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
+                                Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
+                                seurat_pf_myeloid@meta.data,
+                                expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CLEC4C",],
+                                Feature = "CLEC4C",
+                                Modality = "RNA")) %>%
   dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
-                Feature = factor(Feature, levels = c("CD163", "MARCO", "C5AR1", "VSIG4", "CD1C")),
+                Feature = factor(Feature, levels = c("CD1C", "CLEC9A", "CLEC4C", "C5AR1", "MARCO", "CD163 (RNA)", "CD163 (CITE)", "VCAN", "C1QA", "VSIG4")),
                 celltype = factor(manual_l3, levels = celltype_order_pf_l3$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
-                celltype_w_number = factor(celltype_w_number, levels = celltype_order_pf_l3$number_subset))
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_pf_l3$number_subset)) %>%
+  dplyr::filter(manual_l2 %in% c("Macrophages", "CDCs", "PDCs"))
 
-umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_ggplotobj <- ggplot(umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_df, aes(x = wnnUMAP_1, y = wnnUMAP_2)) +
+umap_hc_pf_myeloid_markers_ggplotobj <- ggplot(umap_hc_pf_myeloid_markers_df, aes(x = wnnUMAP_1, y = wnnUMAP_2)) +
   geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
-  geom_point_rast(data = umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_df %>%
+  geom_point_rast(data = umap_hc_pf_myeloid_markers_df %>%
                     dplyr::filter(expr>0), aes(col = expr, order = expr_rank), show.legend = T, size = 0.25) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
-  facet_wrap(~Feature, nrow = 1, ncol = 6) +
+  #facet_wrap(~Feature, nrow = 3, ncol = 3) +
+  facet_wrap(~Feature, nrow = 2, ncol = 5) +
   guides(colour = guide_legend(override.aes = list(size = 3),
                                title = "Expression")) +
+  xlim(-6,11) +
+  ylim(-5,8) +
   scale_color_viridis() +
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         legend.pos = "bottom",
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank(),
+        # axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
+        # axis.text.y = element_blank(),
+        # axis.ticks.y = element_blank(),
         axis.title.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-pdf("umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1.pdf", width = 18, height=3)
-print(umap_hc_pf_myeloid_cd163_marco_vsig4_c5ar1_ggplotobj)
+#pdf("umap_hc_pf_myeloid_markers.pdf", width = 9, height=9)
+pdf("umap_hc_pf_myeloid_markers.pdf", width = 12, height=6)
+print(umap_hc_pf_myeloid_markers_ggplotobj)
 dev.off()
 
 # Fig UMAP HC PF Myeloid color by CD163 at both GEX and PEX
@@ -697,6 +605,37 @@ umap_hc_pf_myeloid_l3_ggplotobj <- umap_hc_pf_myeloid_l3_df %>%
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
+# Fig boxplot manual_l1 proportions relative to CD45+
+
+l1rl0_pbmc_pf_proportions_df <- seurat_pbmc_pf@meta.data %>%
+  dplyr::group_by(manual_l1, SampleID, Tissue, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l1), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID, Tissue) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) 
+
+l1rl0_pbmc_pf_proportions_ggplotobj <- l1rl0_pbmc_pf_proportions_df %>%
+  ggplot(aes(x = forcats::fct_reorder(manual_l1, -Ncellperc), y = Ncellperc, fill = Tissue)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(size = 1.5, position = position_dodge(width = 0.75)) +
+  scale_fill_manual(values = tissue_colors) +
+  labs(y = "%CD45+ cells") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+pdf("l1rl0_pbmc_pf_proportions.pdf", width = 4, height=4)
+print(l1rl0_pbmc_pf_proportions_ggplotobj)
+dev.off()
+
 # Fig boxplot manual_l2 proportions relative to CD45+
 
 l2rl0_proportions_df <- seurat_pf@meta.data %>%
@@ -797,7 +736,7 @@ pbmc_pf_l3rl0_proportions_df <- seurat_pbmc_pf@meta.data %>%
                 Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
   dplyr::left_join(unique(seurat_pbmc_pf@meta.data[,c("manual_l1", "manual_l3")]), by = "manual_l3") %>%
   dplyr::mutate(manual_l1 = factor(manual_l1, levels = manual_l1_order)) %>%
-  dplyr::left_join(dacs_pbmcvpf_l3rl0[[1]]$da, by = c("manual_l3" = "BaselineProp.clusters"))
+  dplyr::left_join(dacs_pfvpbmc_l3rl0[[1]]$da, by = c("manual_l3" = "BaselineProp.clusters"))
 
 boxplot_pbmc_pf_l3rl0_together_ggplotobj <- pbmc_pf_l3rl0_proportions_df %>%
   ggplot(aes(x = forcats::fct_reorder(manual_l3, -Ncellperc), y = Ncellperc, col = Tissue)) +
@@ -902,6 +841,45 @@ dpws <- sort(table(unlist(lapply(pfvpbmc_fgsea_l3, function(celltype){
     dplyr::pull(pathway)
 }))))
 
+# Fig boxplot PF manual_l3 relative l0
+
+pf_l3rl0_proportions_df <- seurat_pbmc_pf@meta.data %>%
+  dplyr::filter(Tissue == "PF") %>%
+  dplyr::group_by(manual_l3, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l3), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_pbmc_pf@meta.data[,c("manual_l1", "manual_l3")]), by = "manual_l3") %>%
+  dplyr::mutate(manual_l1 = factor(manual_l1, levels = manual_l1_order)) %>%
+  dplyr::left_join(dacs_pfvpbmc_l3rl0[[1]]$da, by = c("manual_l3" = "BaselineProp.clusters"))
+
+boxplot_pf_l3rl0_together_ggplotobj <- ggarrange(plotlist = lapply(split(pf_l3rl0_proportions_df, factor(pf_l3rl0_proportions_df$manual_l1, levels = c("T", "NK/ILC", "B", "Myeloid"))), function(manual_l1){
+  manual_l1 %>%
+    ggplot(aes(x = forcats::fct_reorder(manual_l3, -Ncellperc), y = Ncellperc, fill = manual_l3)) +
+    geom_boxplot(outlier.shape = NA) +
+    geom_point(position = position_dodge(width=0.75)) +
+    facet_wrap(.~ manual_l1) +
+    labs(y = "%CD45+ cells") +
+    theme_bw() +
+    scale_color_manual(values = manual_l3_colors) +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.pos = "bottom",
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+}), widths = c(10, 4, 4, 7.5), nrow = 1, align = "hv", legend = "bottom", common.legend = T)
+
+pdf("boxplot_pf_l3rl0_together.pdf", width = 8, height = 5)
+print(boxplot_pf_l3rl0_together_ggplotobj)
+dev.off()
+
 # Fig stackedbarplot PBMC, PF, Liver and Colon
 
 proportions_l2rl0_tissue_df <- seurat_pbmc_pf_liver_colon@meta.data %>%
@@ -930,7 +908,8 @@ stackedbarplot_l2rl0_tissue_ggplotobj <- proportions_l2rl0_tissue_df %>%
         legend.pos = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-pdf("stackedbarplot_l2rl0_tissue.pdf", width = 7.5, height = 7.5)
+#pdf("stackedbarplot_l2rl0_tissue.pdf", width = 7.5, height = 7.5)
+pdf("stackedbarplot_l2rl0_tissue.pdf", width = 4, height = 4)
 print(stackedbarplot_l2rl0_tissue_ggplotobj)
 dev.off()
 
@@ -1046,3 +1025,6 @@ hc_pf_l3rl1_proportions_df <- seurat_pf@meta.data %>%
                 Ncellprop = Ncells/Nlrefsample,
                 Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
                 Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID))
+
+# Fig boxplot Macrophages VCAN+ PF, Liver, and Colon
+
