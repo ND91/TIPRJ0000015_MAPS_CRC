@@ -25,7 +25,7 @@ seuratObject <- seuratObject[,seuratObject@meta.data$Donor %in% txdonors]
 selected_cells <- seuratObject@meta.data %>%
   dplyr::filter(manual_l1 %in% c("B", "Myeloid", "NK/ILC", "T"),
                 #!manual_l2 %in% c("Granulocytes"),
-                !manual_l4 %in% c("T apoptotic", "Platelets"),
+                !manual_l4 %in% c("T apoptotic", "Platelets", "NK/ILC proliferating", "T proliferating", "CD8 T memory proliferating"),
                 Tissue %in% c("PF", "TX")
   )
 

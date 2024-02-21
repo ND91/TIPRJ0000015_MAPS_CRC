@@ -12,3 +12,4 @@ dependencies:
   - bioconductor-tscan
   - bioconductor-scran
   - bioconductor-scuttle
+  - bioconductor-scater

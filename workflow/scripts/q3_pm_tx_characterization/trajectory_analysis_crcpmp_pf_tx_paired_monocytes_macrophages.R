@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# This script will perform the TSCAN trajectory analysis on the macrophages from PF and TX acquired from PM+ CRC (paired).
+# This script will perform the TSCAN trajectory analysis on the monocytes and macrophages from PF and TX acquired from PM+ CRC (paired).
 
 require(Seurat)
 require(dplyr)
@@ -10,7 +10,6 @@ require(tradeSeq)
 require(slingshot)
 require(scran)
 require(scuttle)
-
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 4) {
@@ -29,8 +28,8 @@ colLabels(sce) <- colData(sce)$seurat_clusters
 # Creating MST 
 aggregated_clusters <- aggregateAcrossCells(sce, ids=colLabels(sce))
 aggregated_centroids <- reducedDim(aggregated_clusters, "PCA")
-aggregated_mst <- TSCAN::createClusterMST(aggregated_centroids)
-aggregated_lines <- TSCAN::reportEdges(aggregated_clusters, mst=mst, use.dimred="UMAP")
+aggregated_mst <- TSCAN::createClusterMST(aggregated_centroids, clusters = NULL)
+aggregated_lines <- TSCAN::reportEdges(aggregated_clusters, mst=aggregated_mst, use.dimred="UMAP")
 cellmapped_aggregatedmst <- mapCellsToEdges(sce, mst=aggregated_mst, use.dimred="PCA")
 
 write.csv(aggregated_lines, aggregated_lines_csv)
@@ -38,8 +37,8 @@ write.csv(aggregated_lines, aggregated_lines_csv)
 # Rooting the MST
 colData(sce)$entropy <- perCellEntropy(sce)
 
-tscan_rootcl1 <- orderCells(cellmapped_aggregatedmst, mst, start="1")
-colData(sce)$Pseudotime_rootcl1 <- averagePseudotime(tscan_rootcl1) 
+tscan_rootcl1 <- orderCells(cellmapped_aggregatedmst, aggregated_mst, start="0")
+#colData(sce)$Pseudotime_rootcl1 <- averagePseudotime(tscan_rootcl1) 
 
 saveRDS(sce, sce_rds, compress = "gzip")
 saveRDS(tscan_rootcl1, tscan_rootcl1_rds, compress = "gzip")

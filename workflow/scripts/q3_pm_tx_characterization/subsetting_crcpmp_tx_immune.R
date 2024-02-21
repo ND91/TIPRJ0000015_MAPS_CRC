@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# The goal of this script is to select the TX-derived cells from the CRC patients.
+# The goal of this script is to select the TX-derived immune cells from the CRC patients.
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2) {
@@ -11,12 +11,15 @@ require(Seurat)
 require(dplyr)
 
 seurat_rds <- args[1]
-crc_tx_seurat_rds <- args[2]
+crc_tx_immune_seurat_rds <- args[2]
 
 seuratObject <- readRDS(seurat_rds)
 
 txcells <- seuratObject@meta.data %>%
-  dplyr::filter(Tissue == "TX") %>%
+  dplyr::filter(manual_l1 %in% c("B", "Myeloid", "NK/ILC", "T"),
+                #!manual_l2 %in% c("Granulocytes"),
+                !manual_l4 %in% c("T apoptotic", "Platelets", "NK/ILC proliferating", "T proliferating", "CD8 T memory proliferating"),
+                Tissue %in% c("TX")) %>%
   dplyr::pull(cellID)
 
 seuratObject <- seuratObject[,seuratObject@meta.data$cellID %in% txcells]
@@ -32,6 +35,6 @@ seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
 seuratObject <- RunUMAP(seuratObject, dims = 1:68, seed.use = 631623)
 
 # Save data
-saveRDS(seuratObject, crc_tx_seurat_rds, compress = "gzip")
+saveRDS(seuratObject, crc_tx_immune_seurat_rds, compress = "gzip")
 
 sessionInfo()

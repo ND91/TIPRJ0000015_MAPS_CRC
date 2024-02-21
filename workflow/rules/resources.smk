@@ -114,6 +114,28 @@ rule gse178318_preparation:
     Rscript workflow/scripts/resources/gse178318_preparation.R "{input.gse178318_mtx}" "{input.gse178318_genes}" "{input.gse178318_barcodes}" "{input.gse178318_curated_celltypes}" "{output.gse178318_annotated_seurat_rds}" &> "{log}"
     """
 
+rule gse178318_subsetting_mnp:
+  input:
+    gse178318_annotated_seurat_rds="resources/GSE178318/gse178318_annotated_SeuratObject.Rds",
+  output:
+    gse178318_mnp_seurat_rds="resources/GSE178318/gse178318_mnp_SeuratObject.Rds",
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/resources/GSE178318/gse178318_subsetting_mnp.log",
+  benchmark:
+    "output/resources/GSE178318/gse178318_subsetting_mnp_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  threads: 
+    1
+  message:
+    "--- GSE178318: Subsetting MNP ---",
+  shell:
+    """
+    Rscript workflow/scripts/resources/gse178318_subset_mnp.R "{input.gse178318_annotated_seurat_rds}" "{output.gse178318_mnp_seurat_rds}" &> "{log}"
+    """
+
 rule gse178318_subsetting_macrophages:
   input:
     gse178318_annotated_seurat_rds="resources/GSE178318/gse178318_annotated_SeuratObject.Rds",

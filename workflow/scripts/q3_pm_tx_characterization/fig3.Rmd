@@ -18,25 +18,45 @@ library(slingshot)
 library(SingleCellExperiment)
 library(DESeq2)
 library(ggdendro)
+library(ggalt)
 ```
 
-If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If not, then adjust paths accordingly.
+If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If not, then adjust paths accordingly.    
 
 ## Setup
 
 ### Paths
 
 ```{r paths}
-base_path <- "/media/hdd1/andrewliyim/maps_crc"
+#base_path <- "/media/hdd1/andrewliyim/maps_crc" # local drive
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc" # L-drive
 
 # Subsets
-seurat_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds")
+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds")
+seurat_crcpmp_tx_monocytes_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds")
+
 seurat_crcpmp_pf_tx_paired_immune_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_immune_SeuratObject.Rds")
 seurat_crcpmp_pf_tx_paired_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds")
 seurat_crcpmp_tx_immune_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds")
 seurat_crcpmp_tx_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds")
 
 # Analyses
+txvpf_paired_degs_l4_rds <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_txvpf_manual_l4_deseq2_list.Rds")
+
+tam_markers_xlsx <- file.path(base_path, "config/genes_of_interest/tams_ma_2022.xlsx")
+crcpmp_pf_tx_paired_macrophages_tamannotation_rds <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_macrophages_tamannotation.Rds")
+
+crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce.Rds")
+crcpmp_pf_tx_paired_monocytes_macrophages_aggregated_lines_csv <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_aggregated_lines.csv")
+crcpmp_pf_tx_paired_monocytes_macrophages_tscan_rootcl1_rds <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_tscan_rootcl1.Rds")
+
+crcpmp_tx_monocytes_macrophages_trajectory_sce_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_trajectory_sce.Rds")
+crcpmp_tx_monocytes_macrophages_trajectory_aggregated_lines_csv <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_tx_monocytes_macrophages_trajectory_aggregated_lines.csv")
+crcpmp_tx_monocytes_macrophages_trajectory_tscan_rootclassicalmonocytes_rds <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_tx_monocytes_macrophages_trajectory_tscan_rootclassicalmonocytes.Rds")
+
+crcpmp_tx_macrophages_trajectory_sce_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_trajectory_sce.Rds")
+crcpmp_tx_macrophages_trajectory_aggregated_lines_csv <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_tx_macrophages_trajectory_aggregated_lines.csv")
+crcpmp_tx_macrophages_trajectory_tscan_rootmacrophagesvcan_rds <- file.path(base_path, "output/q3_pm_tx_characterization/analyses/crcpmp_tx_macrophages_trajectory_tscan_rootmacrophagesvcan.Rds")
 
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
@@ -46,17 +66,30 @@ azizi2018_xlsx <- file.path(base_path, "config/genes_of_interest/m1_m2_azizi2018
 ### Import data
 
 ```{r load subsets}
-seurat_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- readRDS(seurat_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_rds)
+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- readRDS(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_rds)
 seurat_crcpmp_pf_tx_paired_immune <- readRDS(seurat_crcpmp_pf_tx_paired_immune_rds)
 seurat_crcpmp_pf_tx_paired_macrophages <- readRDS(seurat_crcpmp_pf_tx_paired_macrophages_rds)
 seurat_crcpmp_tx_immune <- readRDS(seurat_crcpmp_tx_immune_rds)
+seurat_crcpmp_tx_monocytes_macrophages <- readRDS(seurat_crcpmp_tx_monocytes_macrophages_rds)
 seurat_crcpmp_tx_macrophages <- readRDS(seurat_crcpmp_tx_macrophages_rds)
+
+crcpmp_pf_tx_paired_macrophages_tamannotation <- readRDS(crcpmp_pf_tx_paired_macrophages_tamannotation_rds)
+
+crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce <- readRDS(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce_rds)
+crcpmp_pf_tx_paired_monocytes_macrophages_aggregated_lines <- read.csv(crcpmp_pf_tx_paired_monocytes_macrophages_aggregated_lines_csv)
+crcpmp_pf_tx_paired_monocytes_macrophages_tscan_rootcl1 <- readRDS(crcpmp_pf_tx_paired_monocytes_macrophages_tscan_rootcl1_rds)
+
+crcpmp_tx_monocytes_macrophages_trajectory_sce <- readRDS(crcpmp_tx_monocytes_macrophages_trajectory_sce_rds)
+crcpmp_tx_monocytes_macrophages_aggregated_lines <- read.csv(crcpmp_tx_monocytes_macrophages_trajectory_aggregated_lines_csv)
+crcpmp_tx_monocytes_macrophages_tscan_rootclassicalmonocytes <- readRDS(crcpmp_tx_monocytes_macrophages_trajectory_tscan_rootclassicalmonocytes_rds)
+
+crcpmp_tx_macrophages_trajectory_sce <- readRDS(crcpmp_tx_macrophages_trajectory_sce_rds)
+crcpmp_tx_macrophages_aggregated_lines <- read.csv(crcpmp_tx_macrophages_trajectory_aggregated_lines_csv)
+crcpmp_tx_macrophages_tscan_rootmacrophagesvcan <- readRDS(crcpmp_tx_macrophages_trajectory_tscan_rootmacrophagesvcan_rds)
 ```
 
 ```{r load de analyses}
-```
-
-```{r load da analyses}
+txvpf_paired_degs_l4 <- readRDS(txvpf_paired_degs_l4_rds)
 ```
 
 ```{r load macrophage markers}
@@ -83,6 +116,32 @@ celltype_order_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>
   dplyr::filter(!is.na(color)) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 
+celltype_order_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l4",
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(!is.na(color)) %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+celltype_order_l3_tx_immune <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l3",
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(!is.na(color),
+                celltype %in% seurat_crcpmp_tx_immune$manual_l3) %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+celltype_order_l4_monocytes_macrophages <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l4",
+                celltype %in% c("Classical monocytes", "Non-classical monocytes", "Macrophages C1Q+", "Macrophages C1Q+SPP1+", "Macrophages VCAN+", "Macrophages VCAN+SPP1+", "Macrophages VCAN+C1Q+"),
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(!is.na(color)) %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
 celltype_order_l4_macrophages <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
   dplyr::filter(level == "manual_l4",
                 celltype %in% c("Macrophages C1Q+", "Macrophages C1Q+SPP1+", "Macrophages VCAN+", "Macrophages VCAN+SPP1+", "Macrophages VCAN+C1Q+"),
@@ -102,11 +161,20 @@ names(manual_l2_colors) <- celltype_order_l2$celltype
 manual_l3_colors <- celltype_order_l3$color
 names(manual_l3_colors) <- celltype_order_l3$celltype
 
+manual_l4_colors <- celltype_order_l4$color
+names(manual_l4_colors) <- celltype_order_l4$celltype
+
 manual_l2_number_colors <- celltype_order_l2$color
 names(manual_l2_number_colors) <- celltype_order_l2$number_subset
 
 manual_l3_number_colors <- celltype_order_l3$color
 names(manual_l3_number_colors) <- celltype_order_l3$number_subset
+
+manual_l3_tx_immune_colors <- celltype_order_l3_tx_immune$color
+names(manual_l3_tx_immune_colors) <- celltype_order_l3_tx_immune$number_subset
+
+manual_l4_monocytes_macrophages_number_colors <- celltype_order_l4_monocytes_macrophages$color
+names(manual_l4_monocytes_macrophages_number_colors) <- celltype_order_l4_monocytes_macrophages$number_subset
 
 manual_l4_macrophages_number_colors <- celltype_order_l4_macrophages$color
 names(manual_l4_macrophages_number_colors) <- celltype_order_l4_macrophages$number_subset
@@ -162,13 +230,50 @@ print(umap_crcpmp_pf_tx_paired_l3_ggplotobj)
 ### UMAP PM-CRC TX colored by l3
 
 ```{r umap hc crcpmp tx col_l3, fig.width=8, fig.height=9}
-umap_crcpmp_tx_l3_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_immune),
-                                          Embeddings(seurat_crcpmp_tx_immune[["umap"]]),
-                                          seurat_crcpmp_tx_immune@meta.data) %>%
-  dplyr::mutate(celltype = factor(manual_l3, levels = celltype_order_l3$celltype),
+umap_crcpmp_tx_coll3_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_immune),
+                                             Embeddings(seurat_crcpmp_tx_immune[["umap"]]),
+                                             seurat_crcpmp_tx_immune@meta.data) %>%
+  dplyr::mutate(celltype = factor(manual_l3, levels = celltype_order_l3_tx_immune$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
-                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l3$number_subset)) %>% 
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l3_tx_immune$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
+  geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype)) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = manual_l3_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+print(umap_crcpmp_tx_coll3_ggplotobj)
+
+# pdf("umap_crcpmp_tx_coll3.pdf", width = 8, height=9)
+pdf("umap_crcpmp_tx_coll3.pdf", width = 7.5, height=7.5)
+print(umap_crcpmp_tx_coll3_ggplotobj)
+dev.off()
+```
+
+### UMAP PM-CRC TX colored by l3 labeled by l3
+
+```{r umap hc crcpmp tx col_l3 lab_l3, fig.width=8, fig.height=9}
+umap_crcpmp_tx_coll3_labl3_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_immune),
+                                                   Embeddings(seurat_crcpmp_tx_immune[["umap"]]),
+                                                   seurat_crcpmp_tx_immune@meta.data) %>%
+  dplyr::mutate(celltype = factor(manual_l3, levels = celltype_order_l3_tx_immune$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l3_tx_immune$number_subset)) %>% 
   ggplot(aes(x = UMAP_1, y = UMAP_2)) +
   #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
   geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
@@ -184,7 +289,7 @@ umap_crcpmp_tx_l3_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_immune)
                    label.size=0.25,
                    show.legend = F) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = manual_l3_number_colors) +
+  scale_color_manual(values = manual_l3_tx_immune_colors) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -199,44 +304,412 @@ umap_crcpmp_tx_l3_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_immune)
 
 print(umap_crcpmp_tx_l3_ggplotobj)
 
-# pdf("umap_crcpmp_tx_l3.pdf", width = 8, height=9)
-pdf("umap_crcpmp_tx_l3.pdf", width = 7.5, height=7.5)
-print(umap_crcpmp_tx_l3_ggplotobj)
+# pdf("umap_crcpmp_tx_coll3_labl3.pdf", width = 8, height=9)
+pdf("umap_crcpmp_tx_coll3_labl3.pdf", width = 7.5, height=7.5)
+print(umap_crcpmp_tx_coll3_labl3_ggplotobj)
 dev.off()
 ```
 
-### Hierarchical clustering PBMC, PF, and TX monocytes and macrophages
+### Hierarchical clustering PBMC, PF, and TX monocytes and macrophages per donor
 
-```{r, fig.width = }
-seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- seurat_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages[,seurat_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Group != "HC"]
-
+```{r dendrogram eucdist crcpmp pbmc pf tx paired monocytes macrophages donor, fig.width = 15, fig.height = 7.5}
 counts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- GetAssayData(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages, slot = "counts")
-      
-seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l2 <- paste0(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Donor, "_", seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Tissue, "_", seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$manual_l2)
-      
-pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- counts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages %*% model.matrix(~0+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l2)
-colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages) <- gsub("seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l2", "", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages))
 
-pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- data.frame(row.names = colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages),
-                                                                                  Donor = gsub("(pt[0-9]+)_.+_.+$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)),
-                                                                                  Tissue = gsub("pt[0-9]+_(.+)_.+$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)),
-                                                                                  Celltype = gsub("pt[0-9]+_.+_(.+)$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)))
+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l4 <- paste0(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Donor, "_", seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Tissue, "_", seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$manual_l4)
 
-dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- DESeqDataSetFromMatrix(countData = pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
-                                                                             colData = pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
-                                                                             design = ~1)
+pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- counts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages %*% model.matrix(~0+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l4)
+colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages) <- gsub("seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_donor_l4", "", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages))
 
-rld_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- rlog(dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)
+pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- data.frame(
+  row.names = colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages),
+  Donor = gsub("(pt[0-9]+)_.+_.+$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)),
+  Tissue = gsub("pt[0-9]+_(.+)_.+$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)),
+  Celltype = gsub("pt[0-9]+_.+_(.+)$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages))
+)
 
-eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- dist(t(assay(rld_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)), method = 'euclidean')
+dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- DESeqDataSetFromMatrix(
+  countData = pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
+  colData = pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
+  design = ~1)
 
-ggdendrogram(hclust(eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages), size = 2)
+vst_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- vst(dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)
+
+eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- dist(t(assay(vst_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)), method = 'euclidean')
+
+eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_hclust <- hclust(eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)
+
+pdf("dendrogram_eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages.pdf", width = 15, height = 10)
+ggdendrogram(eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_hclust)
+dev.off()
+```
+
+### Hierarchical clustering PBMC, PF, and TX monocytes and macrophages per tissue
+
+```{r dendrogram eucdist crcpmp pbmc pf tx paired monocytes macrophages, fig.width = 5, fig.height = 5}
+counts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- GetAssayData(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages, slot = "counts")
+
+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_l4 <- paste0(seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$Tissue, "_", seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages@meta.data$manual_l4)
+
+pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- counts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages %*% model.matrix(~0+seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_l4)
+colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages) <- gsub("seurat_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_l4", "", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages))
+
+pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- data.frame(
+  row.names = colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages),
+  Tissue = gsub("pt[0-9]+_(.+)_.+$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)),
+  Celltype = gsub("pt[0-9]+_.+_(.+)$", "\\1", colnames(pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages))
+)
+
+dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- DESeqDataSetFromMatrix(
+  countData = pseudocounts_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
+  colData = pseudosamplemetadata_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages,
+  design = ~1)
+
+vst_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- vst(dds_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)
+
+eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages <- dist(t(assay(vst_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)), method = 'euclidean')
+
+eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_hclust <- hclust(eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages)
+
+pdf("dendrogram_eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages.pdf", width = 5, height = 5)
+ggdendrogram(eucdist_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_hclust)
+dev.off()
+```
+
+### Hierarchical clustering TX macrophages per tissue
+
+```{r dendrogram eucdist crcpmp pbmc pf tx paired monocytes macrophages, fig.width = 1.5, fig.height = 3}
+counts_crcpmp_tx_macrophages <- GetAssayData(seurat_crcpmp_tx_macrophages, slot = "counts")
+
+pseudocounts_crcpmp_tx_macrophages <- counts_crcpmp_tx_macrophages %*% model.matrix(~0+seurat_crcpmp_tx_macrophages@meta.data$manual_l4)
+colnames(pseudocounts_crcpmp_tx_macrophages) <- gsub("seurat_crcpmp_tx_macrophages@meta\\.data\\$manual_l4", "", colnames(pseudocounts_crcpmp_tx_macrophages))
+
+pseudosamplemetadata_crcpmp_tx_macrophages <- data.frame(
+  row.names = colnames(pseudocounts_crcpmp_tx_macrophages),
+  Tissue = "TX",
+  Celltype = gsub("pt[0-9]+_.+_(.+)$", "\\1", colnames(pseudocounts_crcpmp_tx_macrophages))
+)
+
+dds_crcpmp_tx_macrophages <- DESeqDataSetFromMatrix(
+  countData = pseudocounts_crcpmp_tx_macrophages,
+  colData = pseudosamplemetadata_crcpmp_tx_macrophages,
+  design = ~1)
+
+vst_crcpmp_tx_macrophages <- vst(dds_crcpmp_tx_macrophages)
+
+eucdist_crcpmp_tx_macrophages <- dist(t(assay(vst_crcpmp_tx_macrophages)), method = 'euclidean')
+
+eucdist_crcpmp_tx_macrophages_hclust <- hclust(eucdist_crcpmp_tx_macrophages)
+
+pdf("dendrogram_eucdist_crcpmp_tx_macrophages_pertissue.pdf", width = 1.5, height = 3.5)
+ggdendrogram(eucdist_crcpmp_tx_macrophages_hclust)
+dev.off()
+```
+
+### Hierarchical clustering TX macrophages per tissue
+
+```{r dendrogram eucdist crcpmp pbmc pf tx paired monocytes macrophages, fig.width = 3, fig.height = 3}
+counts_crcpmp_tx_macrophages_donor <- GetAssayData(seurat_crcpmp_tx_macrophages, slot = "counts")
+
+seurat_crcpmp_tx_macrophages_donor_l4 <- paste0(seurat_crcpmp_tx_macrophages@meta.data$Donor, "_", seurat_crcpmp_tx_macrophages@meta.data$manual_l4)
+
+pseudocounts_tx_macrophages_donor <- counts_crcpmp_tx_macrophages_donor %*% model.matrix(~0+seurat_crcpmp_tx_macrophages_donor_l4)
+colnames(pseudocounts_tx_macrophages_donor) <- gsub("seurat_crcpmp_tx_macrophages_donor_l4", "", colnames(pseudocounts_tx_macrophages_donor))
+
+pseudosamplemetadata_crcpmp_tx_macrophages_donor <- data.frame(
+  row.names = colnames(pseudocounts_tx_macrophages_donor),
+  Tissue = "TX",
+  Donor = gsub("(pt[0-9]+)_.+$", "\\1", colnames(pseudocounts_tx_macrophages_donor)),
+  Celltype = gsub("pt[0-9]+_(.+)$", "\\1", colnames(pseudocounts_tx_macrophages_donor))
+)
+
+dds_crcpmp_tx_macrophages_donor <- DESeqDataSetFromMatrix(
+  countData = pseudocounts_tx_macrophages_donor,
+  colData = pseudosamplemetadata_crcpmp_tx_macrophages_donor,
+  design = ~1)
+
+vst_crcpmp_tx_macrophages_donor <- vst(dds_crcpmp_tx_macrophages_donor)
+
+eucdist_crcpmp_tx_macrophages_donor <- dist(t(assay(vst_crcpmp_tx_macrophages_donor)), method = 'euclidean')
+
+eucdist_crcpmp_tx_macrophages_donor_hclust <- hclust(eucdist_crcpmp_tx_macrophages_donor)
+
+pdf("dendrogram_eucdist_crcpmp_tx_macrophages_perdonor.pdf", width = 5, height = 3.5)
+ggdendrogram(eucdist_crcpmp_tx_macrophages_donor_hclust)
+dev.off()
 ```
 
 
+### UMAP PM-CRC TX monocytes and macrophages colored by l4
+
+```{r umap crcpmp pf monocytes macrophages col_l4, fig.width=5, fig.height=5}
+umap_crcpmp_tx_monocytes_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                                                Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                                                seurat_crcpmp_tx_monocytes_macrophages@meta.data) %>%
+  dplyr::mutate(Group = factor(Group, levels = c("HC", "CRC+")),
+                celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
+  geom_point_rast(show.legend = T, size = 2, aes(col = celltype_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = . %>%
+                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+                     summarize(x = median(x = UMAP_1),
+                               y = median(x = UMAP_2)),
+                   mapping = aes(label = celltype_number, x = x, y = y),
+                   alpha = 1, 
+                   size = 8,
+                   label.size=0.25,
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = manual_l4_monocytes_macrophages_number_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+print(umap_crcpmp_tx_monocytes_macrophages_l4_ggplotobj)
+
+#pdf("umap_crcpmp_tx_monocytes_macrophages_l4.pdf", width = 7.5, height = 7.5)
+pdf("umap_crcpmp_tx_monocytes_macrophages_l4_5x5.pdf", width = 5, height = 5)
+print(umap_crcpmp_tx_monocytes_macrophages_l4_ggplotobj)
+dev.off()
+```
+
+### UMAP PM-CRC TX monocytes and macrophages colored by myeloid markers
+
+```{r umap crcpmp tx monocytes macrophages col_myeloidmarkers, fig.width=12, fig.height=12}
+umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_ggplotobj_list <- lapply(
+  data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+             Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+             seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+             expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CD1C",],
+             Feature = "CD1C",
+             Modality = "RNA") %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CLEC9A",],
+                                  Feature = "CLEC9A",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CLEC4C",],
+                                  Feature = "CLEC4C",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["SPP1",],
+                                  Feature = "SPP1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["MARCO",],
+                                  Feature = "MARCO",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CD163",],
+                                  Feature = "CD163",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["VCAN",],
+                                  Feature = "VCAN",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["C1QA",],
+                                  Feature = "C1QA",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["VSIG4",],
+                                  Feature = "VSIG4",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["TREM2",],
+                                  Feature = "TREM2",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["FN1",],
+                                  Feature = "FN1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CSF1R",],
+                                  Feature = "CSF1R",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["ITGAM",],
+                                  Feature = "ITGAM",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["ITGAX",],
+                                  Feature = "ITGAX",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CD14",],
+                                  Feature = "CD14",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["GATA6",],
+                                  Feature = "GATA6",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["TIMD4",],
+                                  Feature = "TIMD4",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["MRC1",],
+                                  Feature = "MRC1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["CCR2",],
+                                  Feature = "CCR2",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["LYVE1",],
+                                  Feature = "LYVE1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["XCR1",],
+                                  Feature = "XCR1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
+                                  Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                  seurat_crcpmp_tx_monocytes_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_crcpmp_tx_monocytes_macrophages, assay = "RNA")["S100A8",],
+                                  Feature = "S100A8",
+                                  Modality = "RNA")) %>%
+    dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
+                  Feature = factor(Feature, levels = c("CD1C", "CLEC9A", "CLEC4C", "SPP1", "MARCO", "CD163", "VCAN", "C1QA", "VSIG4", "TREM2", "FN1", "CSF1R", "ITGAM", "ITGAX", "CD14", "GATA6", "TIMD4", "MRC1", "CCR2", "LYVE1", "XCR1", "S100A8")),
+                  celltype = factor(manual_l4, levels = celltype_order_l4$celltype),
+                  celltype_number = as.numeric(celltype),
+                  celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                  celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>%
+    split(., .$Feature), FUN = function(plotdf){
+      plotdf %>% dplyr::arrange(expr) %>%
+        ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+        geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
+        geom_point_rast(data = . %>%
+                          dplyr::filter(expr>0), aes(col = expr), show.legend = T) +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        facet_wrap(~Feature) +
+        guides(colour = guide_legend(override.aes = list(size = 3),
+                                     title = "Expression")) +
+        scale_color_viridis() +
+        #scale_colour_gradient(low = "#ffffff", high = "#FF0000") +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.pos = "none",
+              # axis.text.x = element_blank(),
+              # axis.ticks.x = element_blank(),
+              axis.title.x = element_blank(),
+              # axis.text.y = element_blank(),
+              # axis.ticks.y = element_blank(),
+              axis.title.y = element_blank(),
+              strip.text.x = element_text(face = "bold"))
+    }
+)
+
+print(ggarrange(plotlist = umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+
+pdf("umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_colviridis.pdf", width = 15, height = 15)
+print(ggarrange(plotlist = umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+dev.off()
+```
+
+### UMAP PM-CRC TX monocytes macrophages colored pseudotime (rooted at Classical monocytes)
+
+```{r umap crcpmp tx monocytes macrophages col_pseudotime trajectory, fig.width=7.5, fig.height=7.5}
+umap_crcpmp_tx_monocytes_macrophages_l4_colpseudotime_ggplotobj <- data.frame(CB = colnames(crcpmp_tx_monocytes_macrophages_trajectory_sce),
+                                                                    reducedDim(crcpmp_tx_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                    colData(crcpmp_tx_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  dplyr::arrange(Pseudotime) %>%
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Pseudotime)) +
+  geom_line(data = crcpmp_tx_monocytes_macrophages_aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge), linewidth = 2) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = . %>%
+                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+                     summarize(x = median(x = UMAP_1),
+                               y = median(x = UMAP_2)),
+                   mapping = aes(label = celltype_number, x = x, y = y),
+                   # alpha = 0.75,
+                   size=8,
+                   label.size=0.25,
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  #scale_color_viridis() +
+  scale_colour_gradient(low = "#C7E9C0", high = "#005A32") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_tx_monocytes_macrophages_l4_colpseudotime.pdf", width = 5, height=5.5)
+print(umap_crcpmp_tx_monocytes_macrophages_l4_colpseudotime_ggplotobj)
+dev.off()
+```
+
 ### UMAP PM-CRC TX macrophages colored by l4
 
-```{r umap hc crcpmp pf macrophages col_l4, fig.width=5, fig.height=5}
+```{r umap hc crcpmp tx macrophages col_l4, fig.width=5, fig.height=5}
 umap_crcpmp_tx_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_macrophages),
                                                       Embeddings(seurat_crcpmp_tx_macrophages[["umap"]]),
                                                       seurat_crcpmp_tx_macrophages@meta.data) %>%
@@ -275,8 +748,101 @@ umap_crcpmp_tx_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_crcpm
 
 print(umap_crcpmp_tx_macrophages_l4_ggplotobj)
 
-pdf("umap_crcpmp_tx_macrophages_l4.pdf", width = 7.5, height = 7.5)
+#pdf("umap_crcpmp_tx_macrophages_l4.pdf", width = 7.5, height = 7.5)
+pdf("umap_crcpmp_tx_macrophages_l4_5x5.pdf", width = 5, height = 5)
 print(umap_crcpmp_tx_macrophages_l4_ggplotobj)
+dev.off()
+```
+
+### UMAP PM-CRC TX macrophages colored pseudotime (rooted at Macrophages VCAN+)
+
+```{r umap crcpmp tx macrophages col_pseudotime trajectory, fig.width=7.5, fig.height=7.5}
+umap_crcpmp_tx_macrophages_l4_colpseudotime_ggplotobj <- data.frame(CB = colnames(crcpmp_tx_macrophages_trajectory_sce),
+                                                                    reducedDim(crcpmp_tx_macrophages_trajectory_sce , "UMAP"),
+                                                                    colData(crcpmp_tx_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_macrophages$number_subset)) %>% 
+  dplyr::arrange(Pseudotime) %>%
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Pseudotime)) +
+  geom_line(data = crcpmp_tx_macrophages_aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge), linewidth = 2) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = . %>%
+                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+                     summarize(x = median(x = UMAP_1),
+                               y = median(x = UMAP_2)),
+                   mapping = aes(label = celltype_number, x = x, y = y),
+                   # alpha = 0.75,
+                   size=8,
+                   label.size=0.25,
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  #scale_color_viridis() +
+  scale_colour_gradient(low = "#C7E9C0", high = "#005A32") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_tx_macrophages_l4_colpseudotime.pdf", width = 5, height=5.5)
+print(umap_crcpmp_tx_macrophages_l4_colpseudotime_ggplotobj)
+dev.off()
+```
+
+### UMAP PM-CRC PF TX macrophages colored by Tissue
+
+```{r umap hc crcpmp pf tx paired macrophages col_l4, fig.width=5, fig.height=5}
+umap_crcpmp_pf_tx_paired_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_pf_tx_paired_macrophages),
+                                                                Embeddings(seurat_crcpmp_pf_tx_paired_macrophages[["umap"]]),
+                                                                seurat_crcpmp_pf_tx_paired_macrophages@meta.data) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Tissue)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1, 
+  #                  size = 8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+print(umap_crcpmp_pf_tx_paired_macrophages_l4_ggplotobj)
+
+#pdf("umap_crcpmp_pf_tx_macrophages_coltissue.pdf", width = 7.5, height = 7.5)
+pdf("umap_crcpmp_pf_tx_macrophages_coltissue_5x5.pdf", width = 5, height = 5)
+print(umap_crcpmp_pf_tx_paired_macrophages_l4_ggplotobj)
 dev.off()
 ```
 
@@ -468,6 +1034,193 @@ heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophages_order
 # pdf("heatmap_crcpmpvhc_pf_l4_goi.pdf", width = 3.5, height = 9)
 # print(heatmap_crcpmpvhc_pf_l4_goi_ggplotobj)
 # dev.off()
+```
+
+### Boxplot PM-CRC TX l2rl0 colored by l2
+
+```{r boxplot hc pf l2rl0 col_l2, fig.width=7.5, fig.height=5}
+boxplot_crcpmp_tx_l2rl0_ggplotobj <- seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l2, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l2), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_crcpmp_tx_immune@meta.data[,c("manual_l1", "manual_l2")]), by = "manual_l2") %>%
+  ggplot(aes(x = forcats::fct_reorder(manual_l2, -Ncellperc), y = Ncellperc, fill = manual_l2)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(size = 1.5) +
+  scale_fill_manual(values = manual_l2_colors) +
+  labs(y = "%CD45+ cells") +
+  facet_grid(.~manual_l1, space = "free", scales = "free") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(boxplot_crcpmp_tx_l2rl0_ggplotobj)
+
+pdf("boxplot_crcpmp_tx_l2rl0.pdf", width = 5, height=6)
+print(boxplot_crcpmp_tx_l2rl0_ggplotobj)
+dev.off()
+```
+
+### Boxplot PM-CRC TX l3rl0 colored by l3
+
+```{r boxplot hc pf l3rl0 col_l3, fig.width=7.5, fig.height=5}
+boxplot_crcpmp_tx_l3rl0_ggplotobj <- seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l3, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l3), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_crcpmp_tx_immune@meta.data[,c("manual_l1", "manual_l3")]), by = "manual_l3") %>%
+  ggplot(aes(x = forcats::fct_reorder(manual_l3, -Ncellperc), y = Ncellperc, fill = manual_l3)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(size = 1.5) +
+  scale_fill_manual(values = manual_l3_colors) +
+  labs(y = "%CD45+ cells") +
+  facet_grid(.~manual_l1, space = "free", scales = "free") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(boxplot_crcpmp_tx_l3rl0_ggplotobj)
+
+pdf("boxplot_crcpmp_tx_l3rl0.pdf", width = 7.5, height=6)
+print(boxplot_crcpmp_tx_l3rl0_ggplotobj)
+dev.off()
+
+seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l3, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l3), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_crcpmp_tx_immune@meta.data[,c("manual_l1", "manual_l3")]), by = "manual_l3") %>%
+  readr::write_csv("crcpmp_tx_immune_l3rl0.csv")
+```
+
+### Boxplot PM-CRC TX l4rl0 colored by l4
+
+```{r boxplot hc pf l4rl0 col_l4, fig.width=15, fig.height=7.5}
+boxplot_crcpmp_tx_l4rl0_ggplotobj <- seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l4, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l4), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_crcpmp_tx_immune@meta.data[,c("manual_l1", "manual_l4")]), by = "manual_l4") %>%
+  ggplot(aes(x = forcats::fct_reorder(manual_l4, -Ncellperc), y = Ncellperc, fill = manual_l4)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point_rast(size = 1.5) +
+  scale_fill_manual(values = manual_l4_colors) +
+  labs(y = "%CD45+ cells") +
+  facet_grid(.~manual_l1, space = "free", scales = "free") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(boxplot_crcpmp_tx_l4rl0_ggplotobj)
+
+pdf("boxplot_crcpmp_tx_l4rl0.pdf", width = 7.5, height=6)
+print(boxplot_crcpmp_tx_l4rl0_ggplotobj)
+dev.off()
+
+seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l4, SampleID, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(SampleID), tidyr::nesting(manual_l4), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::left_join(unique(seurat_crcpmp_tx_immune@meta.data[,c("manual_l1", "manual_l4")]), by = "manual_l4") %>%
+  readr::write_csv("crcpmp_tx_immune_l4rl0.csv")
+```
+
+### Boxplot PM-CRC TX l4rl1
+
+```{r boxplot crcpmp l4rl1, fig.width = 10, fig.height = 15}
+seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l1, manual_l3, SampleID, Group, .drop = T) %>%
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Group, SampleID), tidyr::nesting(manual_l1, manual_l3), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID, manual_l1) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::ungroup() %>%
+  readr::write_csv(file = "crcpmp_tx_immune_l4rl1.csv")
+```
+
+### Boxplot PM-CRC TX l4rl1 (Monomac)
+
+```{r boxplot crcpmp l4rl1 monomac, fig.width = 10, fig.height = 15}
+seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::mutate(manual_l1 = ifelse(manual_l2 %in% c("Macrophages", "Monocytes"), "Monomacs", manual_l1)) %>%
+  dplyr::group_by(manual_l1, manual_l3, SampleID, Group, .drop = T) %>%
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Group, SampleID), tidyr::nesting(manual_l1, manual_l3), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID, manual_l1) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  dplyr::ungroup() %>%
+  readr::write_csv(file = "crcpmp_tx_immune_l4rl1_monomacs.csv")
+```
+
+### Boxplot PM-CRC TX l4rl2
+
+```{r boxplot crcpmp l4rl2, fig.width = 8, fig.height = 3.5}
+seurat_crcpmp_tx_immune@meta.data %>%
+  dplyr::group_by(manual_l2, manual_l4, SampleID, Group, .drop = T) %>%
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Group, SampleID), tidyr::nesting(manual_l2, manual_l4), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID, manual_l2) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
+  readr::write_csv(file = "crcpmp_tx_immune_l4rl2.csv")
 ```
 
 ### Boxplot PM-CRC vs HC PF l3rl0 colored by group
@@ -998,12 +1751,40 @@ print(boxplot_crcpmpvhc_pf_l4_dpwoigoi_ggplotobj)
 #   readr::write_csv(file = "crcpmpvhc_pf_l4_dpwoigoi.csv")
 ```
 
-## Trajectory analysis macrophages
+## Trajectory analysis monocytes macrophages PBMC, PF and TX
 
-```{r boxplot gex crcpmpvhc pf l4 dpwoigoi}
-data.frame(colData(sce)) %>%
+```{r pseudotime}
+colData(crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_trajectory_sce)$Pseudotime <- averagePseudotime(tscan_rootcl1) 
+```
+
+```{r entropy differential}
+crcpmp_pf_tx_paired_macrophages_trajectory_coldata <- colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce) %>%
+  data.frame() %>%
+  dplyr::filter(manual_l2 != "Monocytes") %>%
+  dplyr::mutate(Donor = as.factor(Donor),
+                Tissue = as.factor(Tissue))
+
+crcpmp_pf_tx_paired_macrophages_trajectory_coldata_split <- split(crcpmp_pf_tx_paired_macrophages_trajectory_coldata, crcpmp_pf_tx_paired_macrophages_trajectory_coldata$manual_l4)
+
+crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt <- lapply(crcpmp_pf_tx_paired_macrophages_trajectory_coldata_split, function(macrophage){
+  lmer_full <- lmer(entropy~Tissue+(1|Donor), data = macrophage)
+  lmer_red <- lmer(entropy~(1|Donor), data = macrophage)
+  lrt_results <- anova(lmer_full, lmer_red)
+  return(lrt_results)
+})
+
+entropy_pvalues <- do.call(rbind, lapply(crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt, function(macrophage){
+  macrophage$`Pr(>Chisq)`[2]
+}))
+colnames(entropy_pvalues) <- "pvalue" 
+
+write.csv(entropy_pvalues, "crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt_pvalues.csv")
+```
+
+```{r boxplot crcpmpvhc pf tx monocytes macrophages entropy, fig.width = 5, fig.height = 5}
+boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj <- data.frame(colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
   ggplot(aes(x = manual_l4, y = entropy, col = Tissue)) +
-  geom_point(position = position_jitterdodge(), alpha=0.3) +
+  geom_point(position = position_jitterdodge(), alpha=0.3, size = 0.1) +
   geom_boxplot(outlier.shape = NA)+
   labs(y = "Entropy") +
   scale_color_manual(values = tissue_colors) +
@@ -1013,21 +1794,26 @@ data.frame(colData(sce)) %>%
         axis.title.x = element_blank(),
         legend.pos = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj)
+
+pdf("boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy.pdf", width = 5, height=5)
+print(boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj)
+dev.off()
 ```
 
-
-```{r umap_crcpmp_pf_tx_paired_l4_colentropy_ggplotobj}
-umap_crcpmp_pf_tx_paired_l4_colentropy_ggplotobj <- data.frame(CB = colnames(sce),
-                                                               reducedDim(sce, "UMAP"),
-                                                               colData(sce)) %>%
-  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_macrophages$celltype),
+```{r umap crcpmp pf tx paired monocytes macrophages col manuall4, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                      reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                      colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
-                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_macrophages$number_subset)) %>% 
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
   ggplot(aes(x = UMAP_1, y = UMAP_2)) +
-  #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
   geom_point_rast(show.legend = T, size = 1, aes(col = celltype_w_number)) +
-  geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
   labs(y = "",
        x = "") +
   geom_label_repel(data = . %>%
@@ -1040,7 +1826,7 @@ umap_crcpmp_pf_tx_paired_l4_colentropy_ggplotobj <- data.frame(CB = colnames(sce
                    label.size=0.25,
                    show.legend = F) +
   guides(colour = guide_legend(override.aes = list(size = 3))) +
-  scale_color_manual(values = manual_l4_macrophages_number_colors) +
+  scale_color_manual(values = manual_l4_monocytes_macrophages_number_colors) +
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -1053,7 +1839,516 @@ umap_crcpmp_pf_tx_paired_l4_colentropy_ggplotobj <- data.frame(CB = colnames(sce
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(face = "bold"))
 
-print(umap_crcpmp_pf_tx_paired_l4_colentropy_ggplotobj)
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4_ggplotobj)
+dev.off()
 ```
 
+```{r umap crcpmp pf tx paired monocytes macrophages col tissue, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                    reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                    colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Tissue)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue_ggplotobj)
+dev.off()
+
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages colentropy, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                     reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                     colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = entropy)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj)
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj)
+dev.off()
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages colpseudotime, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                        reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                        colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Pseudotime)) +
+  geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime_ggplotobj)
+dev.off()
+
+```
+
+## Trajectory analysis monocytes macrophages PF and TX
+
+```{r pseudotime}
+colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)$Pseudotime <- averagePseudotime(tscan_rootcl1) 
+```
+
+```{r entropy differential}
+crcpmp_pf_tx_paired_macrophages_trajectory_coldata <- colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce) %>%
+  data.frame() %>%
+  dplyr::filter(manual_l2 != "Monocytes") %>%
+  dplyr::mutate(Donor = as.factor(Donor),
+                Tissue = as.factor(Tissue))
+
+crcpmp_pf_tx_paired_macrophages_trajectory_coldata_split <- split(crcpmp_pf_tx_paired_macrophages_trajectory_coldata, crcpmp_pf_tx_paired_macrophages_trajectory_coldata$manual_l4)
+
+crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt <- lapply(crcpmp_pf_tx_paired_macrophages_trajectory_coldata_split, function(macrophage){
+  lmer_full <- lmer(entropy~Tissue+(1|Donor), data = macrophage)
+  lmer_red <- lmer(entropy~(1|Donor), data = macrophage)
+  lrt_results <- anova(lmer_full, lmer_red)
+  return(lrt_results)
+})
+
+entropy_pvalues <- do.call(rbind, lapply(crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt, function(macrophage){
+  macrophage$`Pr(>Chisq)`[2]
+}))
+colnames(entropy_pvalues) <- "pvalue" 
+
+write.csv(entropy_pvalues, "crcpmp_pf_tx_paired_macrophages_entropy_lmer_lrt_pvalues.csv")
+```
+
+```{r boxplot crcpmpvhc pf tx monocytes macrophages entropy, fig.width = 5, fig.height = 5}
+boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj <- data.frame(colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  ggplot(aes(x = manual_l4, y = entropy, col = Tissue)) +
+  geom_point(position = position_jitterdodge(), alpha=0.3, size = 0.1) +
+  geom_boxplot(outlier.shape = NA)+
+  labs(y = "Entropy") +
+  scale_color_manual(values = tissue_colors) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        legend.pos = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj)
+
+pdf("boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy.pdf", width = 5, height=5)
+print(boxplot_crcpmp_pf_tx_monocytes_macrophages_entropy_ggplotobj)
+dev.off()
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages col manuall4, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                      reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                      colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = celltype_w_number)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = . %>%
+                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+                     summarize(x = median(x = UMAP_1),
+                               y = median(x = UMAP_2)),
+                   mapping = aes(label = celltype_number, x = x, y = y),
+                   alpha = 1,
+                   size=8,
+                   label.size=0.25,
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = manual_l4_monocytes_macrophages_number_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colmanuall4_ggplotobj)
+dev.off()
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages col tissue, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                    reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                    colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  #geom_encircle(aes(col = Tissue), expand = 0, s_shape=1, size = 2) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Tissue)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_coltissue_ggplotobj)
+dev.off()
+
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages colentropy, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                     reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                     colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = entropy)) +
+  #geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj)
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colentropy_ggplotobj)
+dev.off()
+```
+
+```{r umap crcpmp pf tx paired monocytes macrophages colpseudotime, fig.width = 8, fig.height = 9}
+umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime_ggplotobj <- data.frame(CB = colnames(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce),
+                                                                                        reducedDim(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce , "UMAP"),
+                                                                                        colData(crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce)) %>%
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l4_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 1, aes(col = Pseudotime)) +
+  geom_line(data = aggregated_lines, mapping=aes(x=UMAP_1, y=UMAP_2, group=edge)) +
+  labs(y = "",
+       x = "") +
+  # geom_label_repel(data = . %>%
+  #                    dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+  #                    summarize(x = median(x = UMAP_1),
+  #                              y = median(x = UMAP_2)),
+  #                  mapping = aes(label = celltype_number, x = x, y = y),
+  #                  alpha = 1,
+  #                  size=8,
+  #                  label.size=0.25,
+  #                  show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf("umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime.pdf", width = 5, height=5.5)
+print(umap_crcpmp_pf_tx_paired_monocytes_macrophages_l4_colpseudotime_ggplotobj)
+dev.off()
+
+```
+
+### Radarplot PM-CRC PF TX Macrophages median TAM classification
+
+```{r radarplot crcpmp pf macrophages median tam classification, fig.width = 6, fig.height = 5}
+radarplot_crcpmp_pf_tx_macrophages_mediantamclassification_splitl4_ggplotobj <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
+  dplyr::select(c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4", "Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM")) %>%
+  tidyr::pivot_longer(-c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4"), names_to = "TAM", values_to = "UCell") %>%
+  dplyr::group_by(Tissue, manual_l4, TAM) %>%
+  dplyr::summarize(median_UCell = median(UCell)) %>%
+  dplyr::mutate(TAM = factor(TAM, levels = c("Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM"))) %>%
+  ggplot(aes(x = TAM, y = median_UCell, col = Tissue, group = Tissue)) +
+  geom_point() +
+  geom_encircle(expand = 0, s_shape=1, size = 2) +
+  #geom_polygon(fill=NA, stat = "identity", linewidth = 1.3) +  
+  #geom_path() +
+  facet_wrap(~manual_l4) +
+  scale_color_manual(values = tissue_colors) +
+  labs(y = "Median UCell Score") +
+  coord_polar() +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        axis.title.x = element_blank())
+
+pdf("radarplot_crcpmp_pf_tx_macrophages_mediantamclassification_splitl4.pdf", width = 9, height=10)
+print(radarplot_crcpmp_pf_tx_macrophages_mediantamclassification_splitl4_ggplotobj)
+dev.off()
+```
+
+### Jitteredboxplot PM-CRC PF TX Macrophages median TAM classification
+
+```{r jitteredboxplot crcpmp pf tx paired macrophages tam classification, fig.width = 15, fig.height = 3.5}
+jitteredboxplot_crcpmp_pf_tx_paired_macrophages_tamclassification_ggplotobj <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
+  dplyr::select(c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4", "Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM")) %>%
+  tidyr::pivot_longer(-c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4"), names_to = "TAM", values_to = "UCell Score") %>%
+  ggplot(aes(x = TAM, y = `UCell Score`, col = Tissue)) +
+  geom_point_rast(position = position_jitterdodge(), alpha = 0.3, size = 0.1) +
+  #geom_jitter_rast() +  
+  geom_boxplot(outlier.shape = NA) +
+  facet_wrap(~manual_l4, nrow = 1) +
+  scale_color_manual(values = tissue_colors) +
+  theme_bw() +
+  theme(legend.pos = "bottom",
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+print(jitteredboxplot_crcpmp_pf_tx_paired_macrophages_tamclassification_ggplotobj)
+
+pdf("jitteredboxplot_crcpmp_pf_tx_paired_macrophages_tamclassification.pdf", width = 15, height=3.5)
+print(jitteredboxplot_crcpmp_pf_tx_paired_macrophages_tamclassification_ggplotobj)
+dev.off()
+```
+
+```{r jitteredboxplot crcpmp pf tx paired macrophages c1qspp1 tam classification}
+jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamclassification_ggplotobj <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
+  dplyr::filter(manual_l4 == "Macrophages C1Q+SPP1+") %>%
+  dplyr::select(c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4", "Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM")) %>%
+  tidyr::pivot_longer(-c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4"), names_to = "TAM", values_to = "UCell Score") %>%
+  ggplot(aes(x = TAM, y = `UCell Score`, col = Tissue)) +
+  geom_point_rast(position = position_jitterdodge(), alpha = 0.3, size = 0.1) +
+  #geom_jitter_rast() +  
+  geom_boxplot(outlier.shape = NA) +
+  scale_color_manual(values = tissue_colors) +
+  theme_bw() +
+  theme(legend.pos = "bottom",
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+pdf("jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamclassification.pdf", width = 5, height=5)
+print(jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamclassification_ggplotobj)
+dev.off()
+```
+
+```{r jitteredboxplot crcpmp pf tx paired macrophages c1qspp1 tam classification}
+jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamregclassification_ggplotobj <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
+  dplyr::filter(manual_l4 == "Macrophages C1Q+SPP1+") %>%
+  dplyr::select(c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4", "Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM")) %>%
+  tidyr::pivot_longer(-c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4"), names_to = "TAM", values_to = "UCell Score") %>%
+  dplyr::filter(TAM == "Reg") %>%
+  ggplot(aes(x = TAM, y = `UCell Score`, col = Tissue)) +
+  geom_point_rast(position = position_jitterdodge(), alpha = 0.3, size = 0.1) +
+  #geom_jitter_rast() +  
+  geom_boxplot(outlier.shape = NA) +
+  scale_color_manual(values = tissue_colors) +
+  theme_bw() +
+  theme(legend.pos = "bottom",
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+pdf("jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamregclassification.pdf", width = 3, height=5)
+print(jitteredboxplot_crcpmp_pf_tx_paired_macrophagesc1qspp1_tamregclassification_ggplotobj)
+dev.off()
+```
+
+
+
+```{r}
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_coldata <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
+  data.frame() %>%
+  tidyr::pivot_longer(-c(1:51), names_to = "TAM", values_to = "UCell") %>%
+  dplyr::filter(manual_l2 != "Monocytes") %>%
+  dplyr::mutate(Macrophage_TAM = paste0(manual_l4, "_", TAM),
+                Donor = as.factor(Donor),
+                Tissue = as.factor(Tissue))
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_coldata_split <- split(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_coldata, crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_coldata$Macrophage_TAM)
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_lmer_lrt <- lapply(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_coldata_split, function(macrophagetam){
+  lmer_full <- lmer(UCell~Tissue+(1|Donor), data = macrophagetam)
+  lmer_red <- lmer(UCell~(1|Donor), data = macrophagetam)
+  lrt_results <- anova(lmer_full, lmer_red)
+  return(lrt_results)
+})
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_pvalues <- do.call(rbind, lapply(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_lmer_lrt, function(macrophagetam){
+  unlist(macrophagetam$`Pr(>Chisq)`[2])
+}))
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell <- data.frame(pvalue = crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_pvalues[,1],
+                                                                                   row.names =names(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_pvalues[,1]))
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell$padj <- p.adjust(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell$pvalue, method = "fdr")
+
+crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell <- crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell[order(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell$pvalue),]
+
+write.csv(crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell, "crcpmp_pf_tx_paired_macrophages_macrophages_tamclassification_ducell.csv")
+```
+
+```{r volcanoplot crcpmp txvpf paired macrophages c1qspp1 regtam}
+reg_tam_markers <- readxl::read_excel(tam_markers_xlsx) %>%
+  dplyr::filter(TAM == "Reg")
+
+volcanoplot_crcpmp_txvpf_paired_macrophages_c1qspp1_regtammarkers_ggplotobj <- txvpf_paired_degs_l4$`Macrophages C1Q+SPP1+`$degs %>%
+  data.frame() %>%
+  dplyr::filter(gene %in% reg_tam_markers$Gene) %>%
+  dplyr::mutate(Significance = ifelse(padj<0.05, "Significant", "NS"),
+                label = ifelse(padj<0.05, gene, NA)) %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_vline(xintercept = 0, alpha = 0.5) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point_rast(aes(col = Significance)) +
+  # geom_point_rast(data = . %>%
+  #                   dplyr::filter(gene %in% reg_tam_markers$Gene), col = "red") +
+  geom_label_repel(aes(label = label)) +
+  scale_color_manual(values = c("Significant" = "#000000", "NS" = "#d3d3d3")) +
+  labs(title = "PM relative to PF from paired patients",
+       subtitle = "Reg-TAM markers",
+       y = bquote('-'~log[10]~'(p-value)'),
+       x = bquote('-'~log[2]~'(fold change)')) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.pos = "bottom")
+
+pdf("volcanoplot_crcpmp_txvpf_paired_macrophages_c1qspp1_regtammarker.pdf", width = 5, height = 6)
+print(volcanoplot_crcpmp_txvpf_paired_macrophages_c1qspp1_regtammarkers_ggplotobj)
+dev.off()
+```
 
