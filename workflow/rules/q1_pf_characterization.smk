@@ -32,9 +32,9 @@ rule subsetting_hc_pbmc:
   conda:
     "../envs/r.yaml",
   log:
-    "output/q1_pbmc_characterization/subsets/subsetting_hc_pbmc.log",
+    "output/q1_pf_characterization/subsets/subsetting_hc_pbmc.log",
   benchmark:
-    "output/q1_pbmc_characterization/subsets/subsetting_hc_pbmc_benchmark.txt",
+    "output/q1_pf_characterization/subsets/subsetting_hc_pbmc_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
@@ -89,6 +89,11 @@ rule subsetting_hc_pf_macrophages:
     hc_pf_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
   output:
     hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
+    hc_pf_macrophages_cellmetadata_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/cellmetadata.csv",
+    hc_pf_macrophages_counts_mtx="output/q1_pf_characterization/subsets/hc_pf_macrophages/counts.mtx",
+    hc_pf_macrophages_features_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/features.csv",
+    hc_pf_macrophages_umap_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/umap.csv",
+    hc_pf_macrophages_pca_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/pca.csv",
   threads: 
     1
   conda:
@@ -101,7 +106,7 @@ rule subsetting_hc_pf_macrophages:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pf_macrophages.R "{input.hc_pf_seuratobject_rds}" "{output.hc_pf_macrophages_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q1_pf_characterization/subsetting_hc_pf_macrophages.R "{input.hc_pf_seuratobject_rds}" "{output.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_cellmetadata_csv}" "{output.hc_pf_macrophages_counts_mtx}" "{output.hc_pf_macrophages_features_csv}" "{output.hc_pf_macrophages_umap_csv}" "{output.hc_pf_macrophages_pca_csv}" &> "{log}"
     """
     
 rule combining_pbmc_pf_liver_colon:
@@ -256,7 +261,7 @@ rule trajectory_analysis_hc_pf_macrophages:
   output:
     hc_pf_macrophages_trajectory_sce_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_trajectory_sce.Rds",
     aggregated_lines_csv="output/q1_pf_characterization/analyses/hc_pf_macrophages_trajectory_aggregated_lines.csv",
-    tscan_rootcl1_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_trajectory_tscan_rootcl1.Rds",
+    tscan_rootmacrophagesvcan_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_trajectory_tscan_rootmacrophagesvcan.Rds",
   threads: 
     1
   conda:
@@ -269,7 +274,33 @@ rule trajectory_analysis_hc_pf_macrophages:
     mem_mb=64000,
   shell:
     """
-    Rscript --vanilla workflow/scripts/q1_pf_characterization/trajectory_analysis_pf_macrophages.R "{input.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_trajectory_sce_rds}" "{output.aggregated_lines_csv}" "{output.tscan_rootcl1_rds}" &> "{log}"
+    Rscript --vanilla workflow/scripts/q1_pf_characterization/trajectory_analysis_pf_macrophages.R "{input.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_trajectory_sce_rds}" "{output.aggregated_lines_csv}" "{output.tscan_rootmacrophagesvcan_rds}" &> "{log}"
+    """
+
+rule scvelo_analysis_hc_pf_macrophages:
+  input:
+    cellmetadata_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/cellmetadata.csv",
+    counts_mtx="output/q1_pf_characterization/subsets/hc_pf_macrophages/counts.mtx",
+    features_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/features.csv",
+    umap_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/umap.csv",
+    pca_csv="output/q1_pf_characterization/subsets/hc_pf_macrophages/pca.csv",
+    velocyto_curated_loom="output/curated/velocyto_curated.loom",
+  output:
+    scvelo_anndata_h5ad="output/q1_pf_characterization/analyses/hc_pf_macrophages_scvelo_anndata.h5ad",
+    scvelo_cellmetadata_csv="output/q1_pf_characterization/analyses/hc_pf_macrophages_scvelo_cellmetadata.csv",
+  threads: 
+    1
+  conda:
+    "../envs/python-scvelo.yaml",
+  log:
+    "output/q1_pf_characterization/analyses/scvelo_analysis_hc_pf_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/analyses/scvelo_analysis_hc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=64000,
+  shell:
+    """
+    python workflow/scripts/q1_pf_characterization/scvelo.py --cellmetadata_csv "{input.cellmetadata_csv}" --counts_mtx "{input.counts_mtx}" --features_csv "{input.features_csv}" --umap_csv "{input.umap_csv}" --pca_csv "{input.pca_csv}" --velocyto_curated_loom "{input.velocyto_curated_loom}" --scvelo_anndata_h5ad "{output.scvelo_anndata_h5ad}" --scvelo_anndata_cellmetadata_csv "{output.scvelo_cellmetadata_csv}" &> "{log}"
     """
 
 rule da_hc_pfvpbmc:

@@ -47,6 +47,11 @@ rule subsetting_crcpmp_pf_macrophages:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
   output:
     crcpmp_pf_macrophages_seuratobject_rds="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages_SeuratObject.Rds",
+    crcpmp_pf_macrophages_cellmetadata_csv="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages/cellmetadata.csv",
+    crcpmp_pf_macrophages_counts_mtx="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages/counts.mtx",
+    crcpmp_pf_macrophages_features_csv="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages/features.csv",
+    crcpmp_pf_macrophages_umap_csv="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages/umap.csv",
+    crcpmp_pf_macrophages_pca_csv="output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages/pca.csv",
   threads: 
     1
   conda:
@@ -59,7 +64,7 @@ rule subsetting_crcpmp_pf_macrophages:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_crcpmp_pf_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_pf_macrophages_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_crcpmp_pf_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_pf_macrophages_seuratobject_rds}" "{output.crcpmp_pf_macrophages_cellmetadata_csv}" "{output.crcpmp_pf_macrophages_counts_mtx}" "{output.crcpmp_pf_macrophages_features_csv}" "{output.crcpmp_pf_macrophages_umap_csv}" "{output.crcpmp_pf_macrophages_pca_csv}" &> "{log}"
     """
 
 rule subsetting_hc_crcpmp_pbmc_pf_monocytes_macrophages:
@@ -87,6 +92,11 @@ rule subsetting_hc_crcpmp_pf_macrophages:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
   output:
     hc_crcpmp_pf_macrophages_seuratobject_rds="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages_SeuratObject.Rds",
+    hc_crcpmp_pf_macrophages_cellmetadata_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/cellmetadata.csv",
+    hc_crcpmp_pf_macrophages_counts_mtx="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/counts.mtx",
+    hc_crcpmp_pf_macrophages_features_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/features.csv",
+    hc_crcpmp_pf_macrophages_umap_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/umap.csv",
+    hc_crcpmp_pf_macrophages_pca_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/pca.csv",
   threads: 
     1
   conda:
@@ -99,7 +109,7 @@ rule subsetting_hc_crcpmp_pf_macrophages:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_hc_crcpmp_pf_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pf_macrophages_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_hc_crcpmp_pf_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pf_macrophages_seuratobject_rds}" "{output.hc_crcpmp_pf_macrophages_cellmetadata_csv}" "{output.hc_crcpmp_pf_macrophages_counts_mtx}" "{output.hc_crcpmp_pf_macrophages_features_csv}" "{output.hc_crcpmp_pf_macrophages_umap_csv}" "{output.hc_crcpmp_pf_macrophages_pca_csv}" &> "{log}"
     """
 
 ############
@@ -242,6 +252,32 @@ rule hc_crcpmp_pbmc_pf_monocytes_macrophages_trajectory_inference:
   shell:
     """
     Rscript --vanilla workflow/scripts/q2_crc_vs_hc/hc_crcpmp_pbmc_pf_monocytes_macrophages_trajectory_inference.R "{input.hc_crcpmp_pbmc_pf_monocytes_macrophages_seuratobject_rds}" "{output.sce_ss_rds}" &> "{log}"
+    """
+    
+rule scvelo_analysis_hc_crcpmp_pf_macrophages:
+  input:
+    cellmetadata_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/cellmetadata.csv",
+    counts_mtx="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/counts.mtx",
+    features_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/features.csv",
+    umap_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/umap.csv",
+    pca_csv="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages/pca.csv",
+    velocyto_curated_loom="output/curated/velocyto_curated.loom",
+  output:
+    scvelo_anndata_h5ad="output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_macrophages_scvelo_anndata.h5ad",
+    scvelo_cellmetadata_csv="output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_macrophages_scvelo_cellmetadata.csv",
+  threads: 
+    1
+  conda:
+    "../envs/python-scvelo.yaml",
+  log:
+    "output/q2_crc_vs_hc/analyses/scvelo_analysis_hc_crcpmp_pf_macrophages.log",
+  benchmark:
+    "output/q2_crc_vs_hc/analyses/scvelo_analysis_hc_crcpmp_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=64000,
+  shell:
+    """
+    python workflow/scripts/q1_pf_characterization/scvelo.py --cellmetadata_csv "{input.cellmetadata_csv}" --counts_mtx "{input.counts_mtx}" --features_csv "{input.features_csv}" --umap_csv "{input.umap_csv}" --pca_csv "{input.pca_csv}" --velocyto_curated_loom "{input.velocyto_curated_loom}" --scvelo_anndata_h5ad "{output.scvelo_anndata_h5ad}" --scvelo_anndata_cellmetadata_csv "{output.scvelo_cellmetadata_csv}" &> "{log}"
     """
 
 rule hc_crcpmp_pf_nichenet:

@@ -26,7 +26,8 @@ If the snakemake pipeline was run as-is, the following files will be generated i
 ### Paths
 
 ```{r paths}
-base_path <- "/media/hdd1/andrewliyim/maps_crc"
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc"
+#base_path <- "/media/hdd1/andrewliyim/maps_crc"
 
 # Subsets
 seurat_hc_crcpmp_pf_rds <- file.path(base_path, "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds")
@@ -44,6 +45,8 @@ degs_pf_l4_crcpmpvhc_rds <- file.path(base_path, "output/q2_crc_vs_hc/analyses/d
 fgsea_pf_l4_crcpmpvhc_rds <- file.path(base_path, "output/q2_crc_vs_hc/analyses/fgsea_crcvhc_PF_manual_l4_list.Rds")
 
 degs_pf_l4_crcpmp_pci_rds <- file.path(base_path, "output/q2_crc_vs_hc/analyses/degs_crc_pci_pf_macrophages_manual_l4_list.Rds")
+
+hc_crcpmp_pf_macrophages_scvelo_cellmetadata_csv <- file.path(base_path, "output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_macrophages_scvelo_cellmetadata.csv")
 
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
@@ -76,6 +79,10 @@ dacs_pf_l4rl2_crcpmpvhc <- readRDS(dacs_pf_l4rl2_crcpmpvhc_rds)
 ```{r load macrophage markers}
 m1_markers <- readxl::read_excel(azizi2018_xlsx, sheet = 2)
 m2_markers <- readxl::read_excel(azizi2018_xlsx, sheet = 3)
+```
+
+```{r load scvelo analyses}
+hc_crcpmp_pf_macrophages_scvelo_cellmetadata <- read.csv(hc_crcpmp_pf_macrophages_scvelo_cellmetadata_csv)
 ```
 
 ### Plotting parameters
@@ -131,10 +138,10 @@ celltype_order_pf_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
   dplyr::filter(celltype %in% unique(seurat_hc_crcpmp_pf@meta.data[,"manual_l4"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 
-macrophages_order_pf_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+celltype_order_pf_macrophages_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
   dplyr::filter(level == "manual_l4",
                 modality == "gene",
-                celltype %in% c("Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages VCAN+SPP1+", "Macrophages C1Q+SPP1+")) %>%
+                celltype %in% c("Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+", "Macrophages SPP1+")) %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
   dplyr::filter(celltype %in% unique(seurat_hc_crcpmp_pf_macrophages@meta.data[,"manual_l4"])) %>%
@@ -157,8 +164,8 @@ names(manual_l3_colors_pf) <- celltype_order_pf_l3$celltype
 manual_l3_colors_pf <- celltype_order_pf_l3$color
 names(manual_l3_colors_pf) <- celltype_order_pf_l3$celltype
 
-manual_l4_colors_pf_macrophages <- macrophages_order_pf_l4$color
-names(manual_l4_colors_pf_macrophages) <- macrophages_order_pf_l4$celltype
+manual_l4_colors_pf_macrophages <- celltype_order_pf_macrophages_l4$color
+names(manual_l4_colors_pf_macrophages) <- celltype_order_pf_macrophages_l4$celltype
 
 manual_l3_number_colors_pf <- celltype_order_pf_l3$color
 names(manual_l3_number_colors_pf) <- celltype_order_pf_l3$number_subset
@@ -166,8 +173,8 @@ names(manual_l3_number_colors_pf) <- celltype_order_pf_l3$number_subset
 manual_l4_number_colors_pf <- celltype_order_pf_l4$color
 names(manual_l4_number_colors_pf) <- celltype_order_pf_l4$number_subset
 
-manual_l4_number_colors_pf_macrophages <- macrophages_order_pf_l4$color
-names(manual_l4_number_colors_pf_macrophages) <- macrophages_order_pf_l4$number_subset
+manual_l4_number_colors_pf_macrophages <- celltype_order_pf_macrophages_l4$color
+names(manual_l4_number_colors_pf_macrophages) <- celltype_order_pf_macrophages_l4$number_subset
 
 manual_l2_colors <- celltype_order_l2$color
 names(manual_l2_colors) <- celltype_order_l2$celltype
@@ -177,7 +184,7 @@ names(manual_l2_colors) <- celltype_order_l2$celltype
 
 ```{r, fig.width = 10, fig.height = 7.5}
 VlnPlot(seurat_hc_crcpmp_pf, "CSF1R", group.by = "manual_l3") + 
-  theme(legend.pos = "bottom")
+  theme(legend.position = "bottom")
 
 violinplot_crcpmp_pf_l3_colexprcsf1r_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpmp_pf),
                                                              seurat_hc_crcpmp_pf@meta.data,
@@ -185,7 +192,7 @@ violinplot_crcpmp_pf_l3_colexprcsf1r_ggplotobj <- data.frame(CB = colnames(seura
                                                              Gene = "CSF1R") %>%
   dplyr::filter(Group == "CRC+") %>%
   ggplot(aes(x = manual_l3, y = expr)) +
-  geom_violin(aes(col = Group)) +
+  geom_violin(aes(col = Group), trim = F, scale = "width") +
   #geom_point(position = position_dodge(width=0.75), aes(group = Group)) +
   facet_grid(.~ manual_l1, scales = "free", space="free") +
   labs(y = "Expression") +
@@ -194,12 +201,11 @@ violinplot_crcpmp_pf_l3_colexprcsf1r_ggplotobj <- data.frame(CB = colnames(seura
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(violinplot_crcpmp_pf_l3_colexprcsf1r_ggplotobj)
 ```
-
 
 ### UMAP HC PM-CRC PF colored by l3
 
@@ -228,7 +234,7 @@ umap_hc_crcpmp_pf_l3_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpmp_pf),
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -259,7 +265,7 @@ umap_hc_crcpmp_pf_coldonor_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpm
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -291,7 +297,7 @@ umap_hc_crcpmp_pf_blenddonor_splitgroup_ggplotobj <- data.frame(CB = colnames(se
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -316,13 +322,13 @@ umap_hc_crcpmp_pf_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_hc
                                                          Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
                                                          seurat_hc_crcpmp_pf_macrophages@meta.data) %>%
   dplyr::mutate(Group = factor(Group, levels = c("HC", "CRC+")),
-                celltype = factor(manual_l4, levels = macrophages_order_pf_l4$celltype),
+                celltype = factor(manual_l4, levels = celltype_order_pf_macrophages_l4$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
                 celltype_w_number = factor(celltype_w_number)) %>% 
   ggplot(aes(x = UMAP_1, y = UMAP_2)) +
   #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
-  geom_point_rast(show.legend = T, size = 0.25, aes(col = celltype_w_number)) +
+  geom_point_rast(show.legend = T, size = 2, aes(col = celltype_w_number)) +
   labs(y = "",
        x = "") +
   geom_label_repel(data = . %>%
@@ -341,7 +347,7 @@ umap_hc_crcpmp_pf_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_hc
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -352,8 +358,8 @@ umap_hc_crcpmp_pf_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_hc
 
 print(umap_hc_crcpmp_pf_macrophages_l4_ggplotobj)
 
-# pdf("umap_hc_crcpmp_pf_macrophages_l4.pdf", width = 15, height=7.5)
-pdf("umap_hc_crcpmp_pf_macrophages_l4.pdf", width = 7.5, height=3.75)
+# pdf("umap_hc_crcpmp_pf_macrophages_l4_p1.pdf", width = 15, height=7.5)
+pdf("umap_hc_crcpmp_pf_macrophages_l4_p2.pdf", width = 7.5, height=3.75)
 print(umap_hc_crcpmp_pf_macrophages_l4_ggplotobj)
 dev.off()
 ```
@@ -373,7 +379,7 @@ umap_hc_crcpmp_pf_macrophages_coldonor_ggplotobj <- data.frame(CB = colnames(seu
   theme_minimal() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
@@ -393,7 +399,7 @@ dev.off()
 umap_hc_crcpmp_pf_macrophages_df <- data.frame(CB = colnames(seurat_hc_crcpmp_pf_macrophages),
                                                Embeddings(seurat_hc_crcpmp_pf_macrophages[["umap"]]),
                                                seurat_hc_crcpmp_pf_macrophages@meta.data) %>%
-  dplyr::mutate(celltype = factor(manual_l4, levels = macrophages_order_pf_l4$celltype),
+  dplyr::mutate(celltype = factor(manual_l4, levels = celltype_order_pf_macrophages_l4$celltype),
                 celltype_number = as.numeric(celltype),
                 celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
                 celltype_w_number = factor(celltype_w_number))
@@ -437,7 +443,7 @@ umap_hc_crcpmp_pf_macrophages_markers_ggplotobj <- data.frame(CB = colnames(seur
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         axis.title.x = element_blank(),
@@ -462,7 +468,7 @@ stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj <- seurat_hc_crcpmp_pf_macr
   dplyr::ungroup() %>%
   tidyr::complete(tidyr::nesting(Group), tidyr::nesting(manual_l4), fill = list(Ncells = 0)) %>%
   dplyr::group_by(Group) %>%
-  dplyr::mutate(manual_l4 = factor(manual_l4, levels = macrophages_order_pf_l4$celltype),
+  dplyr::mutate(manual_l4 = factor(manual_l4, levels = celltype_order_pf_macrophages_l4$celltype),
                 Nsample = sum(Ncells),
                 Ncellprop = Ncells/Nsample,
                 Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
@@ -477,14 +483,14 @@ stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj <- seurat_hc_crcpmp_pf_macr
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
 
-# pdf("stackedbarplot_crcpmp_pf_macrophages_coll4.pdf", width = 3, height = 5)
-# print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
-# dev.off()
+pdf("stackedbarplot_crcpmp_pf_macrophages_coll4.pdf", width = 3, height = 5)
+print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
+dev.off()
 
 # seurat_hc_crcpmp_pf_macrophages@meta.data %>%
 #   dplyr::group_by(manual_l4, Group, .drop = T) %>% 
@@ -492,7 +498,7 @@ print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
 #   dplyr::ungroup() %>%
 #   tidyr::complete(tidyr::nesting(Group), tidyr::nesting(manual_l4), fill = list(Ncells = 0)) %>%
 #   dplyr::group_by(Group) %>%
-#   dplyr::mutate(manual_l4 = factor(manual_l4, levels = macrophages_order_pf_l4$celltype),
+#   dplyr::mutate(manual_l4 = factor(manual_l4, levels = celltype_order_pf_macrophages_l4$celltype),
 #                 Nsample = sum(Ncells),
 #                 Ncellprop = Ncells/Nsample,
 #                 Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
@@ -508,7 +514,7 @@ print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
 macrophage_markers <- data.frame(gene = c(m1_markers$HGNC, m2_markers$HGNC),
                                  set = c(rep("M1", length(m1_markers$HGNC)), rep("M2", length(m2_markers$HGNC))))
 
-heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
     data.frame() %>%
     dplyr::filter(gene %in% macrophage_markers$gene) %>%
@@ -517,7 +523,7 @@ heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophages_order
 })) %>%
   dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
                 significance = ifelse(pvalue<0.05, "Significant", "NS"),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   dplyr::left_join(macrophage_markers, by = "gene") %>%
   dplyr::filter(pvalue<0.05) %>%
   ggplot(aes(x = macrophages, y = gene)) +
@@ -535,7 +541,7 @@ heatmap_crcpmpvhc_pf_l4_goi_ggplotobj <- do.call(rbind, lapply(macrophages_order
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 #pdf("heatmap_crcpmpvhc_pf_l4_goi.pdf", width = 3.5, height = 20)
@@ -572,7 +578,7 @@ boxplot_crcpmpvhc_pf_l2rl0_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %>%
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l2rl0_ggplotobj)
@@ -596,6 +602,33 @@ seurat_hc_crcpmp_pf@meta.data %>%
   dplyr::left_join(unique(seurat_hc_crcpmp_pf@meta.data[,c("manual_l1", "manual_l2")]), by = "manual_l2") %>%
   dplyr::mutate(manual_l1 = factor(manual_l1, levels = manual_l1_order)) %>%
   readr::write_csv("boxplot_crcpmpvhc_pf_l2rl0.csv")
+```
+
+### Boxplot PM-CRC vs HC PF l2l3rl0 colored by group
+
+```{r boxplot crcpmpvhc pf l2l3rl0 col_group, fig.width = 10, fig.height = 5}
+seurat_hc_crcpmp_pf@meta.data %>%
+  dplyr::mutate(celltype = as.character(manual_l2),
+                celltype = ifelse(celltype %in% c("Monocytes", "Macrophages"), "Mono-macs", celltype)) %>%
+  dplyr::group_by(celltype, SampleID, Group, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Group, SampleID), tidyr::nesting(celltype), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(SampleID) %>%
+  dplyr::mutate(Nlrefsample = sum(Ncells),
+                Ncellprop = Ncells/Nlrefsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID),
+                Group = factor(Group, levels = c("HC", "CRC+"))) %>%
+  dplyr::left_join(seurat_hc_crcpmp_pf@meta.data %>%
+                     dplyr::mutate(celltype = as.character(manual_l2),
+                                   celltype = ifelse(celltype %in% c("Monocytes", "Macrophages"), "Mono-macs", celltype)) %>%
+                     dplyr::select(manual_l1, celltype) %>%
+                     unique(),
+                   by = "celltype") %>%
+  dplyr::mutate(manual_l1 = factor(manual_l1, levels = manual_l1_order)) %>%
+  readr::write_csv("boxplot_crcpmpvhc_pf_l2l3rl0.csv")
 ```
 
 ### Boxplot PM-CRC vs HC PF l3rl0 colored by group
@@ -626,7 +659,7 @@ boxplot_crcpmpvhc_pf_l3rl0_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %>%
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l3rl0_ggplotobj)
@@ -665,7 +698,7 @@ boxplot_crcpmpvhc_pf_l3rl0_separate_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l3rl0_separate_ggplotobj)
@@ -723,7 +756,7 @@ boxplot_crcpmpvhc_pf_l4rl0_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %>%
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l4rl0_ggplotobj)
@@ -762,7 +795,7 @@ boxplot_crcpmpvhc_pf_l4rl0_separate_ggplotobj <-  seurat_hc_crcpmp_pf@meta.data 
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l4rl0_separate_ggplotobj)
@@ -804,7 +837,7 @@ boxplot_crcpmpvhc_pf_l3rl1_separate_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l3rl1_separate_ggplotobj)
@@ -864,7 +897,7 @@ boxplot_crcpmpvhc_pf_l4rl2_separate_ggplotobj <- seurat_hc_crcpmp_pf@meta.data %
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l4rl2_separate_ggplotobj)
@@ -894,11 +927,11 @@ dev.off()
 ### Dotplot GEX PM-CRC vs HC PF macrophages colored by macrophage marker DEGs
 
 ```{r dotplot gex crcpmpvhc pf macrophages col_degstop50, fig.width=3.5, fig.height=27.5}
-crcpmpvhc_pf_macrophages_l4_top50 <- unique(unlist(lapply(degs_pf_l4_crcpmpvhc[macrophages_order_pf_l4$celltype], function(macrophage){
+crcpmpvhc_pf_macrophages_l4_top50 <- unique(unlist(lapply(degs_pf_l4_crcpmpvhc[celltype_order_pf_macrophages_l4$celltype], function(macrophage){
   macrophage$degs[1:50,"gene"]
 })))
 
-dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
     data.frame() %>%
     dplyr::filter(gene %in% crcpmpvhc_pf_macrophages_l4_top50) %>%
@@ -908,7 +941,7 @@ dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj <- do.call(rbind, lappl
   dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
                 significance = ifelse(pvalue<0.05, "Significant", "NS"),
                 gene = factor(gene, levels = crcpmpvhc_pf_macrophages_l4_top50),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   ggplot(aes(x = macrophages, y = gene)) +
   geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
   theme_bw() +
@@ -917,7 +950,7 @@ dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj <- do.call(rbind, lappl
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj)
@@ -930,7 +963,7 @@ print(dotplot_gex_crcpmpvhc_pf_macrophages_degstop50_ggplotobj)
 ### Dotplot pathways PM-CRC vs HC PF macrophages colored by genesets that were significantly different in at least 1 macrophage subset
 
 ```{r dotplot pws crcpmpvhc pf macrophages col_pws, fig.width = 7.5, fig.height = 12.5}
-crcpmpvhc_pf_macrophages_l4_fgsea_sig <- unique(unlist(lapply(fgsea_pf_l4_crcpmpvhc[macrophages_order_pf_l4$celltype], function(macrophage){
+crcpmpvhc_pf_macrophages_l4_fgsea_sig <- unique(unlist(lapply(fgsea_pf_l4_crcpmpvhc[celltype_order_pf_macrophages_l4$celltype], function(macrophage){
   macrophage %>%
     data.frame() %>%
     dplyr::select(1:7) %>%
@@ -938,7 +971,7 @@ crcpmpvhc_pf_macrophages_l4_fgsea_sig <- unique(unlist(lapply(fgsea_pf_l4_crcpmp
     dplyr::pull(pathway)
 })))
 
-crcpmpvhc_pf_macrophages_l4_fgsea_sig_df <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+crcpmpvhc_pf_macrophages_l4_fgsea_sig_df <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   fgsea_pf_l4_crcpmpvhc[[macrophage]] %>%
     data.frame() %>%
     dplyr::filter(pathway %in% crcpmpvhc_pf_macrophages_l4_fgsea_sig) %>%
@@ -951,7 +984,7 @@ dotplot_pwd_crcpmpvhc_pf_macrophages_colpws_ggplotobj <- crcpmpvhc_pf_macrophage
   dplyr::mutate(direction = ifelse(NES<0, "HC", "CRC+"),
                 significance = ifelse(pval<0.05, "Significant", "NS"),
                 pathway = factor(pathway, levels = unique(pathway)),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   ggplot(aes(x = macrophages, y = pathway)) +
   geom_point(aes(size = -log10(pval), col = direction, alpha = significance)) +
   theme_bw() +
@@ -960,7 +993,7 @@ dotplot_pwd_crcpmpvhc_pf_macrophages_colpws_ggplotobj <- crcpmpvhc_pf_macrophage
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(dotplot_pwd_crcpmpvhc_pf_macrophages_colpws_ggplotobj)
@@ -988,7 +1021,7 @@ dotplot_pwd_crcpmpvhc_pf_macrophages_coldpws_ggplotobj <- crcpmpvhc_pf_macrophag
   dplyr::mutate(direction = ifelse(NES<0, "HC", "CRC+"),
                 significance = ifelse(pval<0.05, "Significant", "NS"),
                 pathway = factor(pathway, levels = unique(pathway)),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   ggplot(aes(x = macrophages, y = pathway)) +
   geom_point(aes(size = -log10(pval), col = direction, alpha = significance)) +
   theme_bw() +
@@ -997,7 +1030,7 @@ dotplot_pwd_crcpmpvhc_pf_macrophages_coldpws_ggplotobj <- crcpmpvhc_pf_macrophag
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(dotplot_pwd_crcpmpvhc_pf_macrophages_coldpws_ggplotobj)
@@ -1035,7 +1068,7 @@ gs_hs <- msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:KE
 gs_hs_list <- split(x = gs_hs$gene_symbol, f = gs_hs$gs_name)
 genes_pwoi <- unique(unlist(gs_hs_list[pwoi_for_genes]))
 
-genes_pwoi_de <- lapply(degs_pf_l4_crcpmpvhc[macrophages_order_pf_l4$celltype], function(macrophage){
+genes_pwoi_de <- lapply(degs_pf_l4_crcpmpvhc[celltype_order_pf_macrophages_l4$celltype], function(macrophage){
   macrophage$degs %>%
     data.frame() %>%
     #$dplyr::filter(pvalue<0.05 & gene %in% genes_pwoi)
@@ -1051,7 +1084,7 @@ colnames(genes_pwoi_bin) <- pwoi_for_genes
 pwoi_pw <- data.frame(gene = rownames(genes_pwoi_bin), 
                       pathway = apply(genes_pwoi_bin, MARGIN = 1, function(gene){colnames(genes_pwoi_bin)[min(which(gene))]}))
 
-dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
     data.frame() %>%
     dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
@@ -1060,7 +1093,7 @@ dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(mac
 })) %>%
   dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
                 significance = ifelse(pvalue<0.05, "Significant", "NS"),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   dplyr::left_join(pwoi_pw, by = "gene") %>%
   ggplot(aes(x = macrophages, y = gene)) +
   geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
@@ -1071,7 +1104,7 @@ dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(mac
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj)
@@ -1082,7 +1115,7 @@ print(dotplot_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj)
 ```
 
 ```{r heatmap gex crcpmpvhc pf macrophages split_dpwoi, fig.width = 3.5, fig.height = 9}
-heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   degs_pf_l4_crcpmpvhc[[macrophage]]$degs %>%
     data.frame() %>%
     dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
@@ -1091,7 +1124,7 @@ heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(mac
 })) %>%
   dplyr::mutate(direction = ifelse(stat<0, "HC", "CRC+"),
                 significance = ifelse(pvalue<0.05, "Significant", "NS"),
-                macrophages = factor(macrophages, levels = macrophages_order_pf_l4$celltype)) %>%
+                macrophages = factor(macrophages, levels = celltype_order_pf_macrophages_l4$celltype)) %>%
   dplyr::left_join(pwoi_pw, by = "gene") %>%
   ggplot(aes(x = macrophages, y = gene)) +
   #geom_point(aes(size = -log10(pvalue), col = direction, alpha = significance)) +
@@ -1107,18 +1140,18 @@ heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj <- do.call(rbind, lapply(mac
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        legend.pos = "right",
+        legend.position = "right",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj)
 
-# pdf("heatmap_gex_crcpmpvhc_pf_macrophages_gpws.pdf", width = 3.5, height = 9)
-# print(heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj)
-# dev.off()
+pdf("heatmap_gex_crcpmpvhc_pf_macrophages_gpws.pdf", width = 3, height = 9)
+print(heatmap_gex_crcpmpvhc_pf_macrophages_gpws_ggplotobj)
+dev.off()
 ```
 
 ```{r dataframe gex crcpmpvhc pf macrophages dpwoigoi}
-boxplot_crcpmpvhc_pf_l4_pwoisig_df <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+boxplot_crcpmpvhc_pf_l4_pwoisig_df <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   assay(rlog(degs_pf_l4_crcpmpvhc[[macrophage]]$dds)) %>%
     data.frame(., gene = rownames(.)) %>%
     dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
@@ -1133,7 +1166,7 @@ boxplot_crcpmpvhc_pf_l4_pwoisig_df <- do.call(rbind, lapply(macrophages_order_pf
 
 
 ```{r boxplot gex crcpmpvhc pf l4 m1m2siggenes, fig.width = 20, fig.height = 20}
-degs_pf_l4_crcpmpvhc_m1m2_sig_genes <- unique(unlist(lapply(degs_pf_l4_crcpmpvhc[macrophages_order_pf_l4$celltype], function(macrophage){
+degs_pf_l4_crcpmpvhc_m1m2_sig_genes <- unique(unlist(lapply(degs_pf_l4_crcpmpvhc[celltype_order_pf_macrophages_l4$celltype], function(macrophage){
   macrophage$degs %>%
     data.frame() %>%
     dplyr::filter(gene %in% c(m1_markers$HGNC, m2_markers$HGNC),
@@ -1141,7 +1174,7 @@ degs_pf_l4_crcpmpvhc_m1m2_sig_genes <- unique(unlist(lapply(degs_pf_l4_crcpmpvhc
     dplyr::pull(gene)
 })))
 
-boxplot_crcpmpvhc_pf_l4_m1m2_sig_genes_df <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+boxplot_crcpmpvhc_pf_l4_m1m2_sig_genes_df <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   assay(rlog(degs_pf_l4_crcpmpvhc[[macrophage]]$dds)) %>%
     data.frame(., gene = rownames(.)) %>%
     dplyr::filter(gene %in% degs_pf_l4_crcpmpvhc_m1m2_sig_genes) %>%
@@ -1163,7 +1196,7 @@ boxplot_crcpmpvhc_pf_l4_m1m2_sig_genes_ggplotobj <- ggplot(boxplot_crcpmpvhc_pf_
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.title.x = element_blank(),
-        legend.pos = "bottom",
+        legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 print(boxplot_crcpmpvhc_pf_l4_m1m2_sig_genes_ggplotobj)
@@ -1176,10 +1209,118 @@ print(boxplot_crcpmpvhc_pf_l4_m1m2_sig_genes_ggplotobj)
 #   readr::write_csv(file = "crcpmpvhc_pf_l4_m1m2_sig_genes.csv")
 ```
 
+### Volcanoplot DEGs PM-CRC vs HC PF macrophages C1Q+
+
+```{r volcanoplot degs crcpmpvhc pf macrophages c1q, fig.width = 20, fig.height = 20}
+volcanoplot_crcpmpvhc_pf_macrophagesc1q_ggplotobj <- degs_pf_l3_crcpmpvhc$`Macrophages C1Q+`$degs %>%
+  data.frame() %>%
+  dplyr::mutate(Significance = ifelse(padj<0.05, "Significant", "NS"),
+                label = ifelse(padj<0.05, gene, NA)) %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_vline(xintercept = 0, alpha = 0.5) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point_rast(aes(col = Significance)) +
+  geom_label_repel(aes(label = label)) +
+  scale_color_manual(values = c("Significant" = "#000000", "NS" = "#d3d3d3")) +
+  labs(title = "PF Macrophages C1Q+",
+       subtitle = "PM-CRC relative to HC",
+       y = bquote('-'~log[10]~'(p-value)'),
+       x = bquote('-'~log[2]~'(fold change)')) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+
+pdf("volcanoplot_crcpmpvhc_pf_macrophagesc1q.pdf", width = 5, height = 6)
+print(volcanoplot_crcpmpvhc_pf_macrophagesc1q_ggplotobj)
+dev.off()
+```
+
+### Volcanoplot DEGs PM-CRC vs HC PF macrophages Macrophages SPP1+
+
+```{r volcanoplot degs crcpmpvhc pf macrophages c1q, fig.width = 20, fig.height = 20}
+volcanoplot_crcpmpvhc_pf_macrophagesspp1_ggplotobj <- degs_pf_l3_crcpmpvhc$`Macrophages SPP1+`$degs %>%
+  data.frame() %>%
+  dplyr::mutate(Significance = ifelse(padj<0.05, "Significant", "NS"),
+                label = ifelse(padj<0.05, gene, NA)) %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_vline(xintercept = 0, alpha = 0.5) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point_rast(aes(col = Significance)) +
+  geom_label_repel(aes(label = label)) +
+  scale_color_manual(values = c("Significant" = "#000000", "NS" = "#d3d3d3")) +
+  labs(title = "PF Macrophages SPP1+",
+       subtitle = "PM-CRC relative to HC",
+       y = bquote('-'~log[10]~'(p-value)'),
+       x = bquote('-'~log[2]~'(fold change)')) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+
+pdf("volcanoplot_crcpmpvhc_pf_macrophagesspp1.pdf", width = 5, height = 6)
+print(volcanoplot_crcpmpvhc_pf_macrophagesspp1_ggplotobj)
+dev.off()
+```
+
+### Volcanoplot DEGs PM-CRC vs HC PF macrophages Macrophages VCAN+
+
+```{r volcanoplot degs crcpmpvhc pf macrophages vcan, fig.width = 20, fig.height = 20}
+volcanoplot_crcpmpvhc_pf_macrophagesvcan_ggplotobj <- degs_pf_l3_crcpmpvhc$`Macrophages VCAN+`$degs %>%
+  data.frame() %>%
+  dplyr::mutate(Significance = ifelse(padj<0.05, "Significant", "NS"),
+                label = ifelse(padj<0.05, gene, NA)) %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_vline(xintercept = 0, alpha = 0.5) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point_rast(aes(col = Significance)) +
+  geom_label_repel(aes(label = label)) +
+  scale_color_manual(values = c("Significant" = "#000000", "NS" = "#d3d3d3")) +
+  labs(title = "PF Macrophages VCAN+",
+       subtitle = "PM-CRC relative to HC",
+       y = bquote('-'~log[10]~'(p-value)'),
+       x = bquote('-'~log[2]~'(fold change)')) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+
+pdf("volcanoplot_crcpmpvhc_pf_macrophagesvcan.pdf", width = 5, height = 6)
+print(volcanoplot_crcpmpvhc_pf_macrophagesvcan_ggplotobj)
+dev.off()
+```
+
+### Volcanoplot DEGs PM-CRC vs HC PF macrophages Macrophages VCAN+C1Q+
+
+```{r volcanoplot degs crcpmpvhc pf macrophages vcan c1q, fig.width = 20, fig.height = 20}
+volcanoplot_crcpmpvhc_pf_macrophagesvcanc1q_ggplotobj <- degs_pf_l3_crcpmpvhc$`Macrophages VCAN+C1Q+`$degs %>%
+  data.frame() %>%
+  dplyr::mutate(Significance = ifelse(padj<0.05, "Significant", "NS"),
+                label = ifelse(padj<0.05, gene, NA)) %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+  geom_vline(xintercept = 0, alpha = 0.5) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point_rast(aes(col = Significance)) +
+  geom_label_repel(aes(label = label)) +
+  scale_color_manual(values = c("Significant" = "#000000", "NS" = "#d3d3d3")) +
+  labs(title = "PF Macrophages VCAN+C1Q+",
+       subtitle = "PM-CRC relative to HC",
+       y = bquote('-'~log[10]~'(p-value)'),
+       x = bquote('-'~log[2]~'(fold change)')) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+
+pdf("volcanoplot_crcpmpvhc_pf_macrophagesvcanc1q.pdf", width = 5, height = 6)
+print(volcanoplot_crcpmpvhc_pf_macrophagesvcanc1q_ggplotobj)
+dev.off()
+```
+
 ### Boxplot PM-CRC vs HC PF macrophages for genes of interest
 
 ```{r boxplot crcpmpvhc pf l4rl2 col_group separate, fig.width = 8, fig.height = 3.5}
-crcpmpvhc_macrophage_genes <- c("HLA-DQA1", "HLA-DQB1", "CXCL8", "CCL20", "VEGFA", "IL10RB", "IL10")
+crcpmpvhc_macrophage_genes <- c("HLA-DQA1", "HLA-DQB1", "CXCL8", "CCL20", "VEGFA", "IL10RB", "IL10", "HLA-A", "HLA-C", "CD74", "HLA-DMA", "HLA-DPA1", "HLA-DPB1", "HLA-DRB1")
 
 rld_macrophages_c1q_macrophagegenes <- rlog(degs_pf_l3_crcpmpvhc$`Macrophages C1Q+`$dds)
 write.csv(assay(rld_macrophages_c1q_macrophagegenes)[crcpmpvhc_macrophage_genes,], file = "macrophages_c1q_macrophagegenes.csv")
@@ -1188,12 +1329,20 @@ write.csv(colData(rld_macrophages_c1q_macrophagegenes), "crcpmpvhc_macrophages_c
 rld_macrophages_vcan_macrophagegenes <- rlog(degs_pf_l3_crcpmpvhc$`Macrophages VCAN+`$dds)
 write.csv(assay(rld_macrophages_vcan_macrophagegenes)[crcpmpvhc_macrophage_genes,], file = "macrophages_vcan_macrophagegenes.csv")
 write.csv(colData(rld_macrophages_vcan_macrophagegenes), "crcpmpvhc_macrophages_vcan_sample_metadata.csv")
+
+rld_macrophages_vcanc1q_macrophagegenes <- rlog(degs_pf_l3_crcpmpvhc$`Macrophages VCAN+C1Q+`$dds)
+write.csv(assay(rld_macrophages_vcanc1q_macrophagegenes)[crcpmpvhc_macrophage_genes,], file = "macrophages_vcanc1q_macrophagegenes.csv")
+write.csv(colData(rld_macrophages_vcanc1q_macrophagegenes), "crcpmpvhc_macrophages_vcanc1q_sample_metadata.csv")
+
+rld_macrophages_spp1_macrophagegenes <- rlog(degs_pf_l3_crcpmpvhc$`Macrophages SPP1+`$dds)
+write.csv(assay(rld_macrophages_spp1_macrophagegenes)[crcpmpvhc_macrophage_genes,], file = "macrophages_spp1_macrophagegenes.csv")
+write.csv(colData(rld_macrophages_spp1_macrophagegenes), "crcpmpvhc_macrophages_spp1_sample_metadata.csv")
 ```
 
 ### Data PM-CRC vs HC PF macrophages for genes 
 
 ```{r crcpmpvhc pf l4 pwoi de df}
-crcpmpvhc_pf_l4_pwoi_de_df <- do.call(rbind, lapply(macrophages_order_pf_l4$celltype, function(macrophage){
+crcpmpvhc_pf_l4_pwoi_de_df <- do.call(rbind, lapply(celltype_order_pf_macrophages_l4$celltype, function(macrophage){
   assay(rlog(degs_pf_l4_crcpmpvhc[[macrophage]]$dds)) %>%
     data.frame(., gene = rownames(.)) %>%
     dplyr::filter(gene %in% genes_pwoi_de_sig) %>%
@@ -1207,7 +1356,6 @@ crcpmpvhc_pf_l4_pwoi_de_df <- do.call(rbind, lapply(macrophages_order_pf_l4$cell
 
 write.csv(crcpmpvhc_pf_l4_pwoi_de_df, "crcpmpvhc_pf_l4_pwoi_de.csv")
 ```
-
 
 ### Dotplot PM-CRC PF macrophages expression macrophage genes with PCI
 
@@ -1233,5 +1381,31 @@ write.csv(colData(rld_macrophages_vcanspp1_pcigenes), "pci_macrophages_vcanspp1_
 rld_macrophages_vcanc1q_pcigenes <- rlog(degs_pf_l4_crcpmp_pci$`Macrophages VCAN+C1Q+`$dds)
 write.csv(assay(rld_macrophages_vcanc1q_pcigenes)[pci_genes,], file = "macrophages_vcanc1q_pcigenes.csv")
 write.csv(colData(rld_macrophages_vcanc1q_pcigenes), file = "pci_macrophages_vcanc1q_sample_metadata.csv")
+```
+
+### Scatterplot scvelo pseudotime relative to C1QA and SPP1
+
+```{r}
+pdf("pseudotime_vs_c1qa_spp1_in_macrophages_c1q_macrophages_spp1.pdf", width = 5, height = 10)
+hc_crcpmp_pf_macrophages_scvelo_cellmetadata %>%
+  dplyr::left_join(data.frame(CellID = seurat_hc_crcpmp_pf_macrophages@meta.data$CellID,
+                              Expression = GetAssayData(seurat_hc_crcpmp_pf_macrophages)[c("C1QA"),],
+                              Gene = "C1QA"),
+                   by = "CellID") %>%
+  rows_append(hc_crcpmp_pf_macrophages_scvelo_cellmetadata %>%
+                dplyr::left_join(data.frame(CellID = seurat_hc_crcpmp_pf_macrophages@meta.data$CellID,
+                                            Expression = GetAssayData(seurat_hc_crcpmp_pf_macrophages)[c("SPP1"),],
+                                            Gene = "SPP1"),
+                                 by = "CellID")) %>%
+  dplyr::filter(manual_l3 %in% c("Macrophages C1Q+", "Macrophages SPP1+")) %>%
+  ggplot(aes(x = velocity_pseudotime, y = Expression, col = Gene)) +
+  geom_point_rast() +
+  facet_wrap(~Group, nrow = 2) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom")
+dev.off()
+
 ```
 

@@ -38,7 +38,7 @@ write.csv(aggregated_lines, aggregated_lines_csv)
 colData(sce)$entropy <- perCellEntropy(sce)
 
 tscan_rootmacrophagesvcan <- orderCells(cellmapped_aggregatedmst, aggregated_mst, start="Macrophages VCAN+")
-colData(sce)$Pseudotime <- averagePseudotime(tscan_rootmacrophagesvcan) 
+#colData(sce)$Pseudotime <- TSCAN::averagePseudotime(tscan_rootmacrophagesvcan) 
 
 saveRDS(sce, sce_rds, compress = "gzip")
 saveRDS(tscan_rootmacrophagesvcan, tscan_rootmacrophagesvcan_rds, compress = "gzip")

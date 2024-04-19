@@ -6,7 +6,7 @@ dependencies:
   - python=3.8
   - pip
   - anndata
-  - numpy
+  - numpy=1.21.1
   - scipy
   - cython
   - pandas

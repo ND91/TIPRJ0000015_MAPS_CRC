@@ -38,7 +38,7 @@ write.csv(aggregated_lines, aggregated_lines_csv)
 colData(sce)$entropy <- perCellEntropy(sce)
 
 tscan_rootclassicalmonocytes <- orderCells(cellmapped_aggregatedmst, aggregated_mst, start="Classical monocytes")
-#colData(sce)$Pseudotime_rootclassicalmonocytes <- averagePseudotime(tscan_rootclassicalmonocytes) 
+#colData(sce)$Pseudotime <- TSCAN::averagePseudotime(tscan_rootclassicalmonocytes) 
 
 saveRDS(sce, sce_rds, compress = "gzip")
 saveRDS(tscan_rootcl1, tscan_rootcl1_rds, compress = "gzip")

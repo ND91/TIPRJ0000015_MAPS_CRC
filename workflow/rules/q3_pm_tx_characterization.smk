@@ -39,7 +39,7 @@ rule subsetting_crcpmp_pbmc_pf_tx_paired_anndata:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pbmc_pf_tx_paired_anndata.py --curated_loom "{input.curated_loom}" --subset_adata_h5ad "{output.crcpmp_pbmc_pf_tx_paired_anndata_h5ad}" &> "{log}"
+    python workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_pbmc_pf_tx_paired_anndata.py --curated_loom "{input.curated_loom}" --subset_adata_h5ad "{output.crcpmp_pbmc_pf_tx_paired_anndata_h5ad}" &> "{log}"
     """
 
 rule subsetting_crcpmp_pf_tx_paired:
@@ -172,9 +172,9 @@ rule subsetting_crcpmp_pf_tx_paired_macrophages:
   conda:
     "../envs/r.yaml",
   log:
-    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pf_tx_paired_macrophages.log",
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_tx_monocytes_tx_paired_macrophages.log",
   benchmark:
-    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pf_tx_paired_macrophages_benchmark.txt",
+    "output/q3_pm_tx_characterization/subsets/subsetting_crcpmp_tx_monocytes_tx_paired_macrophages_benchmark.txt",
   resources:
     mem_mb=60000,
   shell:
@@ -187,6 +187,11 @@ rule subsetting_crcpmp_tx_monocytes_macrophages:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
   output:
     crcpmp_tx_monocytes_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds",
+    crcpmp_tx_monocytes_macrophages_cellmetadata_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/cellmetadata.csv",
+    crcpmp_tx_monocytes_macrophages_counts_mtx="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/counts.mtx",
+    crcpmp_tx_monocytes_macrophages_features_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/features.csv",
+    crcpmp_tx_monocytes_macrophages_umap_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/umap.csv",
+    crcpmp_tx_monocytes_macrophages_pca_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/pca.csv",
   threads: 
     1
   conda:
@@ -199,7 +204,7 @@ rule subsetting_crcpmp_tx_monocytes_macrophages:
     mem_mb=60000,
   shell:
     """
-    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_tx_monocytes_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_tx_monocytes_macrophages_seuratobject_rds}" &> "{log}"
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_crcpmp_tx_monocytes_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.crcpmp_tx_monocytes_macrophages_seuratobject_rds}" "{output.crcpmp_tx_monocytes_macrophages_cellmetadata_csv}" "{output.crcpmp_tx_monocytes_macrophages_counts_mtx}" "{output.crcpmp_tx_monocytes_macrophages_features_csv}" "{output.crcpmp_tx_monocytes_macrophages_umap_csv}" "{output.crcpmp_tx_monocytes_macrophages_pca_csv}" &> "{log}"
     """
 
 rule subsetting_crcpmp_tx_macrophages_subsetting:
@@ -225,6 +230,47 @@ rule subsetting_crcpmp_tx_macrophages_subsetting:
 ############
 # Analyses #
 ############
+
+rule markergenes_crcpmp_tx_macrophages:
+  input:
+    crcpmp_tx_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds",
+  output:
+    crcpmp_tx_macrophages_marker_list_rds="output/q3_pm_tx_characterization/analyses/crcpmp_tx_macrophages_marker_list.Rds",
+  threads: 
+    8
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/analyses/markergenes_crcpmp_tx_macrophages.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/analyses/markergenes_crcpmp_tx_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/markergenes_crcpmp_tx_macrophages.R "{input.crcpmp_tx_macrophages_seuratobject_rds}" "{output.crcpmp_tx_macrophages_marker_list_rds}" &> "{log}"
+    """
+
+rule markergenes_fgsea_crcpmp_tx_macrophages:
+  input:
+    crcpmp_tx_macrophages_marker_list_rds="output/q3_pm_tx_characterization/analyses/crcpmp_tx_macrophages_marker_list.Rds",
+  output:
+    fgsea_list_rds="output/q3_pm_tx_characterization/analyses/fgsea_crcpmp_tx_macrophages_marker_list.Rds",
+    fgsea_pws_xlsx="output/q3_pm_tx_characterization/analyses/fgsea_crcpmp_tx_macrophages_marker_list.xlsx",
+  threads: 
+    1
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/q3_pm_tx_characterization/analyses/markergenes_fgsea_crcpmp_tx_macrophages.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/analyses/markergenes_fgsea_crcpmp_tx_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/markergenes_fgsea_crcpmp_tx_macrophages.R "{input.crcpmp_tx_macrophages_marker_list_rds}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
+    """
 
 rule trajectory_analysis_crcpmp_pf_tx_paired_monocytes_macrophages:
   input:
@@ -289,7 +335,33 @@ rule trajectory_analysis_crcpmp_tx_monocytes_macrophages:
     """
     Rscript --vanilla workflow/scripts/q3_pm_tx_characterization/trajectory_analysis_crcpmp_tx_monocytes_macrophages.R "{input.crcpmp_tx_monocytes_macrophages_seuratobject_rds}" "{output.crcpmp_tx_monocytes_macrophages_trajectory_sce_rds}" "{output.aggregated_lines_csv}" "{output.tscan_rootclassicalmonocytes_rds}" &> "{log}"
     """
-    
+
+rule scvelo_analysis_crcpmp_tx_monocytes_macrophages:
+  input:
+    cellmetadata_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/cellmetadata.csv",
+    counts_mtx="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/counts.mtx",
+    features_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/features.csv",
+    umap_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/umap.csv",
+    pca_csv="output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages/pca.csv",
+    velocyto_curated_loom="output/curated/velocyto_curated.loom",
+  output:
+    scvelo_anndata_h5ad="output/q3_pm_tx_characterization/analyses/crcpmp_tx_monocytes_macrophages_scvelo_anndata.h5ad",
+    scvelo_cellmetadata_csv="output/q3_pm_tx_characterization/analyses/crcpmp_tx_monocytes_macrophages_scvelo_cellmetadata.csv",
+  threads: 
+    1
+  conda:
+    "../envs/python-scvelo.yaml",
+  log:
+    "output/q3_pm_tx_characterization/analyses/scvelo_analysis_crcpmp_tx_monocytes_macrophages.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/analyses/scvelo_analysis_crcpmp_tx_monocytes_macrophages_benchmark.txt",
+  resources:
+    mem_mb=64000,
+  shell:
+    """
+    python workflow/scripts/q1_pf_characterization/scvelo.py --cellmetadata_csv "{input.cellmetadata_csv}" --counts_mtx "{input.counts_mtx}" --features_csv "{input.features_csv}" --umap_csv "{input.umap_csv}" --pca_csv "{input.pca_csv}" --velocyto_curated_loom "{input.velocyto_curated_loom}" --scvelo_anndata_h5ad "{output.scvelo_anndata_h5ad}" --scvelo_anndata_cellmetadata_csv "{output.scvelo_cellmetadata_csv}" &> "{log}"
+    """
+
 rule trajectory_analysis_crcpmp_tx_macrophages:
   input:
     crcpmp_tx_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds",

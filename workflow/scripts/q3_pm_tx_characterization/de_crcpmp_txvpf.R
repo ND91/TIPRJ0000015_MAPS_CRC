@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# This script will perform the differential expression analyses comparing PF (case) with PBMC (reference) for cells present in both only.
+# This script will perform the differential expression for PM-CRC PF-derived macrophages comparing one with the rest.
 
 require(Seurat)
 require(dplyr)

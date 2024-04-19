@@ -3,8 +3,8 @@
 # The goal of this script is to select the PF from CRC PM+ patients.
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop(paste0("Script needs 2 arguments. Current input is:", args))
+if (length(args) != 7) {
+  stop(paste0("Script needs 7 arguments. Current input is:", args))
 }
 
 require(Seurat)
@@ -12,6 +12,11 @@ require(dplyr)
 
 seurat_rds <- args[1]
 crcpmp_pf_seurat_rds <- args[2]
+crcpmp_pf_macrophages_cellmetadata_csv <- args[3]
+crcpmp_pf_macrophages_counts_mtx <- args[4]
+crcpmp_pf_macrophages_features_csv <- args[5]
+crcpmp_pf_macrophages_umap_csv <- args[6]
+crcpmp_pf_macrophages_pca_csv <- args[7]
 
 seuratObject <- readRDS(seurat_rds)
 
@@ -36,5 +41,11 @@ seuratObject <- RunUMAP(seuratObject, dims = 1:46, seed.use = 616223)
 
 # Save data
 saveRDS(seuratObject, crcpmp_pf_seurat_rds, compress = "gzip")
+
+write.csv(seuratObject@meta.data, file = crcpmp_pf_macrophages_cellmetadata_csv, quote = F)
+Matrix::writeMM(GetAssayData(seuratObject, assay = 'RNA', layer = 'counts'), file = crcpmp_pf_macrophages_counts_mtx)
+write.table(data.frame('gene' = rownames(seuratObject)), file = crcpmp_pf_macrophages_features_csv, quote = F, row.names=F, col.names=F)
+write.csv(Embeddings(seuratObject, reduction = "umap"), file = crcpmp_pf_macrophages_umap_csv, quote=F, row.names=F)
+write.csv(Embeddings(seuratObject, reduction = "pca"), file = crcpmp_pf_macrophages_pca_csv, quote=F, row.names=F)
 
 sessionInfo()
