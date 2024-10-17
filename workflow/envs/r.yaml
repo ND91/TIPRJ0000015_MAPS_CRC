@@ -24,3 +24,5 @@ dependencies:
   - r-viridis=0.6.2
   - r-rmarkdown=2.14
   - r-svglite=2.1.0
+  - bioconductor-annotationdbi
+  - bioconductor-org.hs.eg.db

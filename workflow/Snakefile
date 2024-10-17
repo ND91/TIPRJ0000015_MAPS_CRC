@@ -59,12 +59,10 @@ include: "rules/cellranger.smk"
 include: "rules/velocyto.smk"
 include: "rules/trust4.smk"
 include: "rules/preparation.smk"
-#include: "rules/subsetting.smk"
-#include: "rules/analyses.smk"
-#include: "rules/figures.smk"
 include: "rules/q1_pf_characterization.smk"
 include: "rules/q2_crc_vs_hc.smk"
 include: "rules/q3_pm_tx_characterization.smk"
+#include: "rules/figures.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
@@ -85,10 +83,10 @@ rule all:
     #expand("config/samples/fbcs/{run_fbc}_libraries.csv", run_fbc=runs_fbc)
     #expand("output/cellranger/{run_nonfbc}", run_nonfbc=runs_nonfbc),
     #expand("output/cellranger/{run_fbc}", run_fbc=runs_fbc),
-    #expand("output/cellranger/{run}/velocyto/{run}.loom", run=runs),
     #expand("output/trust4/{run}", run=runs),
     #expand("output/trust4/{run}/{run}_barcode_annotated_airr.csv", run=runs),
     "output/trust4/trust4_barcode_annotated_airr.csv",
+    #expand("output/cellranger/{run}/velocyto/{run}.loom", run=runs),
     "output/merged/velocyto_merged.loom",
     "output/curated/velocyto_curated.loom",
     #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), 
@@ -96,8 +94,13 @@ rule all:
     #expand("output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_SeuratObject.Rds", run=runs),
     #"output/merged/merged_SeuratObject.Rds",
     #"output/curated/curated_SeuratObject.Rds",
+    #"resources/GSE134355/gse134355_reannotated_SeuratObject.Rds",
+    # "resources/GSE134355/gse134355_adult_immune_SeuratObject.Rds",
+    "resources/GSE134355/gse134355_adult_immune_reannotated_SeuratObject.Rds",
     #"resources/gse178318/gse178318_annotated_SeuratObject.Rds",
     "resources/GSE178318/gse178318_macrophages_SeuratObject.Rds",
+    "resources/GSE201333/gse201333_lung_SeuratObject.Rds",
+    "resources/GSE201333/gse201333_lymphnode_SeuratObject.Rds",
     # Q1: PF characterization
     "output/q1_pf_characterization/subsets/hc_pbmc_SeuratObject.Rds",
     # "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
@@ -126,6 +129,7 @@ rule all:
     expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{level}_fgsea_list.Rds", level = ["manual_l2","manual_l3"]),
     expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{comparison}_dacs_list.Rds", comparison = ["l3rl0", "l2rl0"]),
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_list.Rds",
+    "output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_fgsea_list.Rds",
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_tamannotation_scores.Rds",
     expand("output/q1_pf_characterization/analyses/hc_pfvlivervcolon_{comparison}_dacs_list.Rds", comparison = ["l3rl0", "l2rl0"]),
     #expand("output/q1_pf_characterization/figures/arrowplot_hc_pfvpbmc_{level}_arrowplot_top5sig.pdf", level = ["manual_l2","manual_l3"]),

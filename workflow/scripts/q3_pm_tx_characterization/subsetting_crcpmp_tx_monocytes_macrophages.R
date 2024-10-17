@@ -33,9 +33,9 @@ seuratObject <- seuratObject[Matrix::rowSums(seuratObject) != 0, ]
 
 seuratObject <- SCTransform(seuratObject, conserve.memory = T)
 seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 12363216)
-seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:50)
+seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:30)
 seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
-seuratObject <- RunUMAP(seuratObject, dims = 1:50, seed.use = 2135325)
+seuratObject <- RunUMAP(seuratObject, dims = 1:30, seed.use = 762589716)
 
 # Save data
 saveRDS(seuratObject, crc_tx_monocytes_macrophages_seurat_rds, compress = "gzip")

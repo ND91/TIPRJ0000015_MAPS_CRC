@@ -392,6 +392,27 @@ rule markergenes_hc_pf_macrophages:
     Rscript workflow/scripts/q1_pf_characterization/markergenes_hc_pf_macrophages_manual_l4.R "{input.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_marker_list_rds}" &> "{log}"
     """
 
+rule markergenes_fgsea_hc_pf_macrophages:
+  input:
+    hc_pf_macrophages_marker_list_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_list.Rds",
+  output:
+    fgsea_list_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_fgsea_list.Rds",
+    fgsea_pws_xlsx="output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_fgsea_list.xlsx",
+  threads: 
+    8
+  conda:
+    "../envs/r-deseq2.yaml",
+  log:
+    "output/q1_pf_characterization/analyses/markergenes_fgsea_hc_pf_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/analyses/markergenes_fgsea_hc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/markergenes_fgsea_hc_pf_macrophages_manual_l4.R "{input.hc_pf_macrophages_marker_list_rds}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
+    """
+
 rule tam_classification_hc_pf_macrophages:
   input:
     hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",

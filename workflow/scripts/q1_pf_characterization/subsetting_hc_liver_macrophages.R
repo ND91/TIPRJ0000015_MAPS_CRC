@@ -11,7 +11,7 @@ require(Seurat)
 require(dplyr)
 
 seurat_rds <- args[1]
-hc_pf_liver_colon_macrophages_seurat_rds <- args[2]
+hc_liver_macrophages_seurat_rds <- args[2]
 
 seuratObject <- readRDS(seurat_rds)
 
@@ -34,6 +34,6 @@ seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
 seuratObject <- RunUMAP(seuratObject, dims = 1:46, seed.use = 74327)
 
 # Save data
-saveRDS(seuratObject, hc_pf_liver_colon_macrophages_seurat_rds, compress = "gzip")
+saveRDS(seuratObject, hc_liver_macrophages_seurat_rds, compress = "gzip")
 
 sessionInfo()
