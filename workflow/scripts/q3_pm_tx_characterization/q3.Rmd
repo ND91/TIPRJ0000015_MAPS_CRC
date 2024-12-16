@@ -1206,7 +1206,7 @@ boxplot_crcpmp_tx_l2rl0_ggplotobj <- seurat_crcpmp_tx_immune@meta.data %>%
   geom_point_rast(size = 1.5) +
   scale_fill_manual(values = manual_l2_colors) +
   labs(y = "%CD45+ cells") +
-  facet_grid(.~manual_l1, space = "free", scales = "free") +
+  # facet_grid(.~manual_l1, space = "free", scales = "free") +
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -1266,7 +1266,7 @@ boxplot_crcpmp_tx_l3rl0_ggplotobj <- seurat_crcpmp_tx_immune@meta.data %>%
   geom_point_rast(size = 1.5) +
   scale_fill_manual(values = manual_l3_colors) +
   labs(y = "%CD45+ cells") +
-  facet_grid(.~manual_l1, space = "free", scales = "free") +
+  # facet_grid(.~manual_l1, space = "free", scales = "free") +
   theme_bw() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),

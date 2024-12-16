@@ -1,0 +1,458 @@
+---
+title: 'Figure SZ: IS Liver'
+author: "Andrew Y.F. Li Yim"
+date: '2024-07-31'
+output: html_document
+---
+
+```{r libraries, include=FALSE}
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(ggrastr)
+library(ggrepel)
+library(ggpubr)
+library(viridis)
+library(ggblend)
+```
+
+If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If necessary, adjust paths accordingly.
+
+## Setup
+
+### Paths
+
+```{r paths}
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc"
+#base_path <- "/media/hdd1/andrewliyim/maps_crc"
+
+# Subsets
+seurat_liver_rds <- file.path(base_path, "resources/liver/liver_seuratobject.rds")
+seurat_liver_myeloid_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/liver_mnp_SeuratObject.Rds")
+seurat_liver_macrophages_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/liver_macrophages_SeuratObject.Rds")
+
+# Plotting parameters
+celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
+pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.xlsx")
+```
+
+### Import data
+
+```{r load subsets}
+seurat_liver <- readRDS(seurat_liver_rds)
+seurat_liver_myeloid <- readRDS(seurat_liver_myeloid_rds)
+seurat_liver_macrophages <- readRDS(seurat_liver_macrophages_rds)
+```
+
+## Figures
+
+### Dotplot liver colored by l2
+
+```{r dotplot liver col_l2, fig.width = 3.75, fig.height=15}
+marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
+  dplyr::filter(Assay == "RNA")
+marker_gex <- GetAssayData(seurat_liver, assay = "RNA")[which(rownames(GetAssayData(seurat_liver, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
+
+dotplot_liver_l2_cellmarkers_gex_ggplotobj <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
+  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
+  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
+  dplyr::inner_join(data.frame(CB = rownames(seurat_liver@meta.data), 
+                               Celltype = seurat_liver@meta.data[,"cell_type_MAPS_L2"]), 
+                    by = "CB") %>%
+  dplyr::mutate(Celltype = factor(Celltype, levels = c("CD4T", "CD8T", "NK CD16-", "B naive", "B intermediate", "B memory", "Plasma B", "Monocytes", "Macrophages", "CDCs", "PDCs", "Granulocytes")), 
+                FeatureID = factor(FeatureID)) %>%
+  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
+  dplyr::summarize(Median = median(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
+                Percentage = ifelse(is.na(Percentage), 0, Percentage),
+                Celltype = factor(Celltype),
+                FeatureID = factor(FeatureID, rev(marker_genes$FeatureID))) %>% 
+  ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
+  geom_tile(alpha = 0, col = "grey") +
+  geom_point(aes(size = Percentage)) +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.spacing.x=unit(0, "lines"))
+
+pdf("dotplot_liver_l2_cellmarkers_gex_ggplotobj.pdf", width = 3.75, height=15)
+print(dotplot_liver_l2_cellmarkers_gex_ggplotobj)
+dev.off()
+```
+
+### UMAP liver colored by lineage genes
+
+```{r umap liver col_lineage_markers, fig.width=10, fig.height=3}
+umap_liver_collineagegenemarkers_ggplotobj_list <- lapply(
+  data.frame(CB = colnames(seurat_liver),
+             Embeddings(seurat_liver[["umap"]]),
+             seurat_liver@meta.data,
+             expr = GetAssayData(seurat_liver, layers = "data")["CD3D",],
+             Feature = "CD3D") %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver),
+                                  Embeddings(seurat_liver[["umap"]]),
+                                  seurat_liver@meta.data,
+                                  expr = GetAssayData(seurat_liver, layers = "data")["NCAM1",],
+                                  Feature = "NCAM1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver),
+                                  Embeddings(seurat_liver[["umap"]]),
+                                  seurat_liver@meta.data,
+                                  expr = GetAssayData(seurat_liver, layers = "data")["MS4A1",],
+                                  Feature = "MS4A1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver),
+                                  Embeddings(seurat_liver[["umap"]]),
+                                  seurat_liver@meta.data,
+                                  expr = GetAssayData(seurat_liver, layers = "data")["ITGAM",],
+                                  Feature = "ITGAM")) %>%
+    dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
+                  Feature = factor(Feature, levels = c("CD3D", "NCAM1", "MS4A1", "ITGAM"))) %>%
+    split(., .$Feature), FUN = function(plotdf){
+      plotdf %>% dplyr::arrange(expr) %>%
+        ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+        geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
+        geom_point_rast(data = . %>%
+                          dplyr::filter(expr>0), aes(col = expr), show.legend = T) +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        facet_wrap(~Feature) +
+        guides(colour = guide_legend(override.aes = list(size = 3),
+                                     title = "Expression")) +
+        scale_color_viridis() +
+        #scale_colour_gradient(low = "#ffffff", high = "#FF0000") +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.position = "none",
+              axis.text.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks = element_blank(),
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank(),
+              strip.text.x = element_text(face = "bold"))
+    }
+)
+
+print(ggarrange(plotlist = umap_liver_collineagegenemarkers_ggplotobj_list, nrow = 1, ncol = 4))
+
+pdf("umap_liver_collineagegenemarkers_colviridis.pdf", width = 10, height = 3)
+print(ggarrange(plotlist = umap_liver_collineagegenemarkers_ggplotobj_list, nrow = 1, ncol = 4))
+dev.off()
+```
+
+### UMAP liver mononuclear phagocytes colored by marker genes
+
+```{r umap liver col_myeloidgenemarkers}
+umap_liver_myeloid_colmyeloidgenemarkers_ggplotobj_list <- lapply(
+  data.frame(CB = colnames(seurat_liver_myeloid),
+             Embeddings(seurat_liver_myeloid[["umap"]]),
+             seurat_liver_myeloid@meta.data,
+             expr = GetAssayData(seurat_liver_myeloid, layers = "data")["CD1C",],
+             Feature = "CD1C") %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CLEC9A",],
+                                  Feature = "CLEC9A")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CLEC4C",],
+                                  Feature = "CLEC4C")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["SPP1",],
+                                  Feature = "SPP1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["MARCO",],
+                                  Feature = "MARCO")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CD163",],
+                                  Feature = "CD163")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["VCAN",],
+                                  Feature = "VCAN")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["C1QA",],
+                                  Feature = "C1QA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["VSIG4",],
+                                  Feature = "VSIG4")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["TREM2",],
+                                  Feature = "TREM2")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["FN1",],
+                                  Feature = "FN1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CSF1R",],
+                                  Feature = "CSF1R")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["ITGAM",],
+                                  Feature = "ITGAM")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["ITGAX",],
+                                  Feature = "ITGAX")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CD14",],
+                                  Feature = "CD14")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = 0, #Expression is undetectable
+                                  Feature = "GATA6")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["TIMD4",],
+                                  Feature = "TIMD4")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["MRC1",],
+                                  Feature = "MRC1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["CCR2",],
+                                  Feature = "CCR2")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["LYVE1",],
+                                  Feature = "LYVE1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["XCR1",],
+                                  Feature = "XCR1")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_myeloid ),
+                                  Embeddings(seurat_liver_myeloid[["umap"]]),
+                                  seurat_liver_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_liver_myeloid,  layers = "data")["S100A8",],
+                                  Feature = "S100A8")) %>%
+    dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
+                  Feature = factor(Feature, levels = c("CD1C", "CLEC9A", "CLEC4C", "SPP1", "MARCO", "CD163", "VCAN", "C1QA", "VSIG4", "TREM2", "FN1", "CSF1R", "ITGAM", "ITGAX", "CD14", "GATA6", "TIMD4", "MRC1", "CCR2", "LYVE1", "XCR1", "S100A8"))) %>%
+    dplyr::filter(manual_l2 %in% c("Macrophages", "CDCs", "PDCs")) %>%
+    split(., .$Feature), FUN = function(plotdf){
+      plotdf %>% dplyr::arrange(expr) %>%
+        ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+        geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
+        geom_point_rast(data = . %>%
+                          dplyr::filter(expr>0), aes(col = expr), show.legend = T) +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        facet_wrap(~Feature) +
+        guides(colour = guide_legend(override.aes = list(size = 3),
+                                     title = "Expression")) +
+        # xlim(-10,11) +
+        # ylim(-10,8) +
+        scale_color_viridis() +
+        #scale_colour_gradient(low = "#ffffff", high = "#FF0000") +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.position = "none",
+              # axis.text.x = element_blank(),
+              # axis.ticks.x = element_blank(),
+              axis.title.x = element_blank(),
+              # axis.text.y = element_blank(),
+              # axis.ticks.y = element_blank(),
+              axis.title.y = element_blank(),
+              strip.text.x = element_text(face = "bold"))
+    }
+)
+
+print(ggarrange(plotlist = umap_liver_myeloid_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+
+pdf("umap_liver_myeloid_colmyeloidgenemarkers_colviridis.pdf", width = 15, height = 15)
+print(ggarrange(plotlist = umap_liver_myeloid_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+dev.off()
+```
+
+### UMAP liver macrophages colored by marker genes
+
+```{r umap liver macrophages col_myeloidgenemarkers, fig.width=12, fig.height=12}
+umap_liver_macrophages_colmyeloidgenemarkers_ggplotobj_list <- lapply(
+  data.frame(CB = colnames(seurat_liver_macrophages ),
+             Embeddings(seurat_liver_macrophages[["umap"]]),
+             seurat_liver_macrophages@meta.data,
+             expr = GetAssayData(seurat_liver_macrophages, layers = "data")["CD1C",],
+             Feature = "CD1C",
+             Modality = "RNA") %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = 0, #Expression is undetectable
+                                  Feature = "SPP1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["MARCO",],
+                                  Feature = "MARCO",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["CD163",],
+                                  Feature = "CD163",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["VCAN",],
+                                  Feature = "VCAN",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["C1QA",],
+                                  Feature = "C1QA",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["VSIG4",],
+                                  Feature = "VSIG4",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["TREM2",],
+                                  Feature = "TREM2",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["FN1",],
+                                  Feature = "FN1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["CSF1R",],
+                                  Feature = "CSF1R",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["ITGAM",],
+                                  Feature = "ITGAM",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["ITGAX",],
+                                  Feature = "ITGAX",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["CD14",],
+                                  Feature = "CD14",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = 0, #Expression is undetectable
+                                  Feature = "GATA6",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["TIMD4",],
+                                  Feature = "TIMD4",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["MRC1",],
+                                  Feature = "MRC1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = 0, #Expression is undetectable
+                                  Feature = "CCR2",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["LYVE1",],
+                                  Feature = "LYVE1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = 0, #Expression is undetectable
+                                  Feature = "XCR1",
+                                  Modality = "RNA")) %>%
+    dplyr::rows_append(data.frame(CB = colnames(seurat_liver_macrophages ),
+                                  Embeddings(seurat_liver_macrophages[["umap"]]),
+                                  seurat_liver_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_liver_macrophages, layers = "data")["S100A8",],
+                                  Feature = "S100A8",
+                                  Modality = "RNA")) %>%
+    dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
+                  Feature = factor(Feature, levels = c("CD1C", "SPP1", "MARCO", "CD163", "VCAN", "C1QA", "VSIG4", "TREM2", "FN1", "CSF1R", "ITGAM", "ITGAX", "CD14", "GATA6", "TIMD4", "MRC1", "CCR2", "LYVE1", "XCR1", "S100A8"))) %>%
+    split(., .$Feature), FUN = function(plotdf){
+      plotdf %>% dplyr::arrange(expr) %>%
+        ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+        geom_point_rast(show.legend = F, size = 0.25, col = "#d3d3d3") +
+        geom_point_rast(data = . %>%
+                          dplyr::filter(expr>0), aes(col = expr), show.legend = T) +
+        guides(colour = guide_legend(override.aes = list(size = 3))) +
+        facet_wrap(~Feature) +
+        guides(colour = guide_legend(override.aes = list(size = 3),
+                                     title = "Expression")) +
+        scale_color_viridis() +
+        #scale_colour_gradient(low = "#ffffff", high = "#FF0000") +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              legend.position = "none",
+              # axis.text.x = element_blank(),
+              # axis.ticks.x = element_blank(),
+              axis.title.x = element_blank(),
+              # axis.text.y = element_blank(),
+              # axis.ticks.y = element_blank(),
+              axis.title.y = element_blank(),
+              strip.text.x = element_text(face = "bold"))
+    }
+)
+
+print(ggarrange(plotlist = umap_liver_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+
+pdf("umap_liver_macrophages_colmyeloidgenemarkers_colviridis.pdf", width = 15, height = 15)
+print(ggarrange(plotlist = umap_liver_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
+dev.off()
+```

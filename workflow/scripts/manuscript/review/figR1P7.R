@@ -90,7 +90,7 @@ figR1P7_list <- lapply(
               strip.text.x = element_text(face = "bold"))
     }
 )
-figR1P7 <- ggarrange(plotlist = figR1P7_list, nrow = 2, ncol = 5)
+figR1P7 <- ggarrange(plotlist = figR1P7_list, nrow = 2, ncol = 5, legend = "bottom", common.legend = T)
 
 # ggsave(filename = "figR1P7.pdf", width = 18, height = 8, units = "in")
-ggsave(filename = "figR1P7.pdf", width = 20, height = 8, units = "in")
+ggsave(filename = "figR1P7.pdf", width = 20, height = 8.5, units = "in")

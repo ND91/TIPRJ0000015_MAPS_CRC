@@ -3974,9 +3974,9 @@ stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj <- seurat_pbmc_pf_li
 
 print(stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj)
 
-# pdf("stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2.pdf", width = 5, height = 5)
-# print(stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj)
-# dev.off()
+pdf("stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2.pdf", width = 5, height = 5)
+print(stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj)
+dev.off()
 
 # seurat_pbmc_pf_liver_colon@meta.data %>%
 #   dplyr::group_by(manual_l2, Tissue, .drop = T) %>% 

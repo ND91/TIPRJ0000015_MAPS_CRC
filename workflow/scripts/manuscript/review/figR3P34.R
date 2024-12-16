@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# This script generates a figure addressing reviewer 3, point 26.
+# This script generates a figure addressing reviewer 3, point 34.
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 1) {
@@ -32,15 +32,13 @@ celltype_order_tx_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
 manual_l3_colors_tx <- celltype_order_tx_l3$color
 names(manual_l3_colors_tx) <- celltype_order_tx_l3$celltype
 
+figR3P34A <- DimPlot(tx_seurat, group.by = "manual_l3", label = T) + labs(title = "PM")# + theme(legend.position = "bottom")
 
 ## Version 1
-
-figR3P34A <- DimPlot(tx_seurat, group.by = "manual_l3", label = T) + labs(title = "PM")# + theme(legend.position = "bottom")
 figR3P34B_list <- FeaturePlot(tx_seurat, c("MARCO", "CD163", "VCAN", "CCR2", "SPP1", "C1QA", "CD14", "FCGR3A"), label = F, combine = FALSE)
 figR3P34B <- ggarrange(plotlist = figR3P34B_list, nrow = 2, ncol = 4)
 
 ## Version 2
-
 figR3P34B_list <- lapply(
   data.frame(CB = colnames(tx_seurat),
              Embeddings(tx_seurat[["umap"]]),

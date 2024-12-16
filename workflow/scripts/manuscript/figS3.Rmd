@@ -339,7 +339,15 @@ dev.off()
 ```{r dotplot crcpmp tx, fig.width = 7.25, fig.height=15}
 marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
   dplyr::filter(Assay == "RNA")
-marker_gex <- GetAssayData(seurat_crcpmp_tx_immune, assay = "RNA")[which(rownames(GetAssayData(seurat_crcpmp_tx_immune, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
+
+marker_genes_wvsig4 <- marker_genes[1:which(marker_genes$FeatureID == "CD163")-1,] %>%
+  dplyr::rows_append(data.frame(FeatureID = "VSIG4",
+                                Assay = "RNA",
+                                protein = NA,
+                                gene = "VSIG4")) %>%
+  dplyr::rows_append(marker_genes[which(marker_genes$FeatureID == "CD163"):nrow(marker_genes),])
+
+marker_gex <- GetAssayData(seurat_crcpmp_tx_immune, assay = "RNA")[which(rownames(GetAssayData(seurat_crcpmp_tx_immune, assay = "RNA")) %in% unique(marker_genes_wvsig4$FeatureID)), ]
 
 dotplot_crcpmp_tx_immune_cellmarkers_ggplotobj <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
   tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
@@ -355,7 +363,7 @@ dotplot_crcpmp_tx_immune_cellmarkers_ggplotobj <- data.frame(FeatureID = rowname
   dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
                 Percentage = ifelse(is.na(Percentage), 0, Percentage),
                 Celltype = factor(Celltype, celltype_order_l3_tx_immune$celltype),
-                FeatureID = factor(FeatureID, rev(marker_genes$FeatureID))) %>% 
+                FeatureID = factor(FeatureID, rev(marker_genes_wvsig4$FeatureID))) %>% 
   ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
   geom_tile(alpha = 0, col = "grey") +
   geom_point(aes(size = Percentage)) +

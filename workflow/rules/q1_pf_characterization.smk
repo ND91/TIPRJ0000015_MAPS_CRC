@@ -371,12 +371,32 @@ rule de_fgsea_hc_pfvpbmc:
     """
     Rscript --vanilla workflow/scripts/q1_pf_characterization/de_fgsea_hc_pfvpbmc.R "{input.deseq2_list_rds}" "{output.fgsea_list_rds}" "{output.fgsea_pws_xlsx}" &> "{log}"
     """
-    
+
+rule markerproteins_hc_pf_manual_l2l3:
+  input:
+    hc_pf_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
+  output:
+    hc_pf_marker_list_rds="output/q1_pf_characterization/analyses/hc_pf_manual_l2l3_markerproteins_list.Rds",
+  threads: 
+    8
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q1_pf_characterization/analyses/markerproteins_hc_pf_manual_l2l3.log",
+  benchmark:
+    "output/q1_pf_characterization/analyses/markerproteins_hc_pf_manual_l2l3_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/markerproteins_hc_pf_manual_l2l3.R "{input.hc_pf_seuratobject_rds}" "{output.hc_pf_marker_list_rds}" &> "{log}"
+    """
+
 rule markergenes_hc_pf_macrophages:
   input:
     hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
   output:
-    hc_pf_macrophages_marker_list_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_list.Rds",
+    hc_pf_macrophages_marker_list_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_markergenes_list.Rds",
   threads: 
     8
   conda:
@@ -390,6 +410,26 @@ rule markergenes_hc_pf_macrophages:
   shell:
     """
     Rscript workflow/scripts/q1_pf_characterization/markergenes_hc_pf_macrophages_manual_l4.R "{input.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_marker_list_rds}" &> "{log}"
+    """
+    
+rule markerproteins_hc_pf_macrophages:
+  input:
+    hc_pf_macrophages_seuratobject_rds="output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
+  output:
+    hc_pf_macrophages_marker_list_rds="output/q1_pf_characterization/analyses/hc_pf_macrophages_markerproteins_list.Rds",
+  threads: 
+    8
+  conda:
+    "../envs/r-ucell.yaml",
+  log:
+    "output/q1_pf_characterization/analyses/markerproteins_hc_pf_macrophages.log",
+  benchmark:
+    "output/q1_pf_characterization/analyses/markerproteins_hc_pf_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q1_pf_characterization/markerproteins_hc_pf_macrophages_manual_l4.R "{input.hc_pf_macrophages_seuratobject_rds}" "{output.hc_pf_macrophages_marker_list_rds}" &> "{log}"
     """
 
 rule markergenes_fgsea_hc_pf_macrophages:

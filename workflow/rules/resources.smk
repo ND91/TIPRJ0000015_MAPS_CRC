@@ -268,25 +268,25 @@ rule gse201333_subsetting_lymphnode:
     Rscript workflow/scripts/resources/gse201333_subset_lymphnode.R "{input.gse201333_seurat_rds}" "{output.gse201333_lymphnode_seurat_rds}" &> "{log}"
     """
 
-# rule gse201333_preparation:
-  # input:
-    # gse201333_seuratobject_rds=config['gse201333_seuratobject_rds'],
-    # gse201333_celltranslations_xlsx=config['gse201333_celltranslations_xlsx'],
-  # output:
-    # gse201333_reannotated_seurat_rds="resources/GSE201333/gse201333_reannotated_SeuratObject.Rds",
-  # conda:
-    # "../envs/r.yaml",
-  # log:
-    # "output/resources/GSE201333/gse201333_preparation.log",
-  # benchmark:
-    # "output/resources/GSE201333/gse201333_preparation_benchmark.txt",
-  # resources:
-    # mem_mb=60000,
-  # threads: 
-    # 1
-  # message:
-    # "--- GSE201333: Preparing ---",
-  # shell:
-    # """
-    # Rscript workflow/scripts/resources/gse201333_preparation.R "{input.gse201333_seuratobject_rds}" "{input.gse201333_celltranslations_xlsx}" "{output.gse201333_reannotated_seurat_rds}" &> "{log}"
-    # """
+rule gse201333_preparation:
+  input:
+    gse201333_seuratobject_rds=config['gse201333_seuratobject_rds'],
+    gse201333_celltranslations_xlsx=config['gse201333_celltranslations_xlsx'],
+  output:
+    gse201333_reannotated_seurat_rds="resources/GSE201333/gse201333_reannotated_SeuratObject.Rds",
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/resources/GSE201333/gse201333_preparation.log",
+  benchmark:
+    "output/resources/GSE201333/gse201333_preparation_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  threads: 
+    1
+  message:
+    "--- GSE201333: Preparing ---",
+  shell:
+    """
+    Rscript workflow/scripts/resources/gse201333_preparation.R "{input.gse201333_seuratobject_rds}" "{input.gse201333_celltranslations_xlsx}" "{output.gse201333_reannotated_seurat_rds}" &> "{log}"
+    """

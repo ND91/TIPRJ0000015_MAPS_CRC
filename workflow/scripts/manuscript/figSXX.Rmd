@@ -30,6 +30,7 @@ base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MA
 seurat_gc_pf_rds <- file.path(base_path, "resources/gastric_cancer/maps_gc_pf_reannotated_stable.RDS")
 seurat_gc_pf_myeloid_rds <- file.path(base_path, "resources/gastric_cancer/maps_gc_pf_reannotated_stable_mnp.RDS")
 seurat_gcpmp_pf_macrophages_rds <- file.path(base_path, "resources/gastric_cancer/maps_gc_pf_macrophages_txpts.Rds")
+seurat_gcpmp_tx_macrophages_rds <- file.path(base_path, "resources/gastric_cancer/maps_gc_tx_macrophages.Rds")
 
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
@@ -42,11 +43,29 @@ pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.
 seurat_gc_pf <- readRDS(seurat_gc_pf_rds)
 seurat_gc_pf_myeloid <- readRDS(seurat_gc_pf_myeloid_rds)
 seurat_gcpmp_pf_macrophages <- readRDS(seurat_gcpmp_pf_macrophages_rds)
+seurat_gcpmp_tx_macrophages <- readRDS(seurat_gcpmp_tx_macrophages_rds)
+```
+
+```{r clean subsets}
+seurat_gc_pf <- seurat_gc_pf[,-which(seurat_gc_pf@meta.data$manual_l3 %in% c("T proliferating", "Unknown", "NK CD16- proliferating", "NK CD16+ proliferating", "CDCs proliferating", "Macrophages C1Q+ proliferating"))]
+seurat_gc_pf@meta.data$manual_l2l3 <- seurat_gc_pf@meta.data %>%
+  dplyr::mutate()
 ```
 
 ### Plotting parameters
 
 ```{r plotting order}
+celltype_order_pf_l2_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l3",
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(celltype %in% unique(seurat_gc_pf@meta.data[,"manual_l3"])) %>%
+  dplyr::mutate(celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+"), "Mono-macs", celltype),
+                color = ifelse(celltype %in% c("Mono-macs"), "#E31A1C", color)) %>%
+  unique() %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
 celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
   dplyr::filter(level == "manual_l3",
                 modality == "gene") %>%
@@ -54,6 +73,11 @@ celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
   unique() %>%
   dplyr::filter(celltype %in% unique(seurat_gc_pf@meta.data[,"manual_l3"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+celltype_order_l3_tx_monocytes_macrophages <- data.frame(celltype = c("Classical monocytes", "Non-classical monocytes", "Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+"),
+                                                         color = c("#FF7F00", "#FFFF33", "#FDB462", "#B3DE69", "#BC80BD", "#FCCDE5"),
+                                                         number_subset = c("1. Classical monocytes", "2. Non-classical monocytes", "3. Macrophages VCAN+", "4. Macrophages C1Q+", "5. Macrophages VCAN+C1Q+", "6. Macrophages SPP1+"))
+
 ```
 
 ## Figures
@@ -430,28 +454,34 @@ pdf("umap_gcpmp_pf_macrophages_colmyeloidgenemarkers_colviridis.pdf", width = 15
 print(ggarrange(plotlist = umap_gc_pf_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
 dev.off()
 ```
+
 ### Dotplot GEX HC PF colored by l2/l3
 
 ```{r dotplot gex hc pf col_l2l3, fig.width = 7.25, fig.height=15}
 marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
   dplyr::filter(Assay == "RNA")
-marker_gex <- GetAssayData(seurat_gc_pf, assay = "RNA")[which(rownames(GetAssayData(seurat_gc_pf, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
 
-dotplot_gc_pf_l3_cellmarkers_gex_ggplotobj <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
+seurat_gc_pf_l2l3 <- seurat_gc_pf
+
+seurat_gc_pf_l2l3@meta.data <- seurat_gc_pf_l2l3@meta.data %>%
+  dplyr::mutate(celltype = manual_l3,
+                celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages C1Q+", "Macrophages SPP1+", "Macrophages VCAN+", "Monocytes", "Macrophages VCAN+C1Q+"), "Mono-macs", as.character(celltype)))
+
+marker_gex <- GetAssayData(seurat_gc_pf_l2l3, assay = "RNA")[which(rownames(GetAssayData(seurat_gc_pf_l2l3, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
+
+dotplot_gc_pf_l2l3_cellmarkers_gex_ggplotobj <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
   tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
   dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_gc_pf@meta.data), 
-                               Celltype = seurat_gc_pf@meta.data[,"manual_l3"]), 
+  dplyr::inner_join(data.frame(CB = rownames(seurat_gc_pf_l2l3@meta.data), 
+                               Celltype = seurat_gc_pf_l2l3@meta.data[,"celltype"]), 
                     by = "CB") %>%
-  dplyr::filter(Celltype %in% celltype_order_pf_l3$celltype) %>%
-  dplyr::mutate(Celltype = factor(Celltype), 
-                FeatureID = factor(FeatureID)) %>%
+  dplyr::filter(Celltype %in% celltype_order_pf_l2_l3$celltype) %>%
   dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
   dplyr::summarize(Median = median(log1p(nUMIs)),
                    Percentage = mean(nUMIs>0)*100) %>%
   dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
                 Percentage = ifelse(is.na(Percentage), 0, Percentage),
-                Celltype = factor(Celltype, celltype_order_pf_l3$celltype),
+                Celltype = factor(Celltype, celltype_order_pf_l2_l3$celltype),
                 FeatureID = factor(FeatureID, rev(marker_genes$FeatureID))) %>% 
   ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
   geom_tile(alpha = 0, col = "grey") +
@@ -468,9 +498,47 @@ dotplot_gc_pf_l3_cellmarkers_gex_ggplotobj <- data.frame(FeatureID = rownames(ma
         panel.border = element_blank(),
         panel.spacing.x=unit(0, "lines"))
 
-print(dotplot_gc_pf_l3_cellmarkers_gex_ggplotobj)
+print(dotplot_gc_pf_l2l3_cellmarkers_gex_ggplotobj)
 
-pdf("dotplot_gc_pf_l3_cellmarkers_gex_ggplotobj.pdf", width = 7.5, height=15)
-print(dotplot_gc_pf_l3_cellmarkers_gex_ggplotobj)
+pdf("dotplot_gc_pf_l2l3_cellmarkers_gex_ggplotobj.pdf", width = 7.5, height=15)
+print(dotplot_gc_pf_l2l3_cellmarkers_gex_ggplotobj)
 dev.off()
 ```
+
+```{r}
+umap_gcpmp_tx_macrophages_ggplotobj <- data.frame(CB = colnames(seurat_gcpmp_tx_macrophages),
+                                                  Embeddings(seurat_gcpmp_tx_macrophages [["umap"]]),
+                                                  seurat_gcpmp_tx_macrophages@meta.data) %>%
+  dplyr::mutate(celltype = factor(manual_l3, levels = celltype_order_l3_monocytes_macrophages$celltype),
+                celltype_number = as.numeric(celltype),
+                celltype_w_number = paste0(as.numeric(celltype), ". ", celltype),
+                celltype_w_number = factor(celltype_w_number, levels = celltype_order_l3_monocytes_macrophages$number_subset)) %>% 
+  ggplot(aes(x = umap_1, y = umap_2)) +
+  #geom_point_rast(show.legend = T, size = 0.5, col = "black") +
+  geom_point_rast(show.legend = T, size = 3, aes(col = celltype_w_number)) +
+  labs(y = "",
+       x = "") +
+  geom_label_repel(data = . %>%
+                     dplyr::group_by(celltype, celltype_number, celltype_w_number) %>%
+                     summarize(x = median(x = umap_1),
+                               y = median(x = umap_2)),
+                   mapping = aes(label = celltype_number, x = x, y = y),
+                   alpha = 1,
+                   size=8,
+                   label.size=0.25,
+                   show.legend = F) +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = manual_l3_monocytes_macrophages_number_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+```
+

@@ -13,7 +13,7 @@ if (length(args) != 5) {
   stop(paste0("Script needs 5 arguments. Current input is:", args))
 }
 
-hc_pf_macrophages_seuratobject_rds <- args[1]
+hc_pf_t_seuratobject_rds <- args[1]
 tam_markers_xlsx <- args[2]
 threads <- args[3]
 hc_pf_macrophages_tamannotation_responses_rds <- args[4]

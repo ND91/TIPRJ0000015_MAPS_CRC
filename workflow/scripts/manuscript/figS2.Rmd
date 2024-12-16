@@ -1,5 +1,5 @@
 ---
-title: 'Figure 2: PerIS HC vs PM-CRC'
+title: 'Supplementary Figure 2: PerIS HC vs PM-CRC'
 author: "Andrew Y.F. Li Yim"
 date: '2023-07-31'
 output: html_document
@@ -27,7 +27,6 @@ If the snakemake pipeline was run as-is, the following files will be generated i
 
 ```{r paths}
 base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc"
-#base_path <- "/media/hdd1/andrewliyim/maps_crc"
 
 # Subsets
 seurat_hc_crcpmp_pf_rds <- file.path(base_path, "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds")

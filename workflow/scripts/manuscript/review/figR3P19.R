@@ -21,8 +21,7 @@ seurat_rds <- args[1] #"output/subsets/live_singlet_nonproliferating_SeuratObjec
 seuratObject <- readRDS(seurat_rds)
 
 selected_cells <- seuratObject@meta.data %>%
-  dplyr::filter(Tissue %in% c("PBMC", "PF"),
-                # manual_l2 %in% c("Monocytes", "Macrophages", "CDCs"),
+  dplyr::filter(# manual_l2 %in% c("Monocytes", "Macrophages", "CDCs"),
                 manual_l3 %in% c("Classical monocytes", "Non-classical monocytes", "Macrophages C1Q+", "Macrophages SPP1+", "Macrophages VCAN+", "Macrophages VCAN+C1Q+", "CDC2s")
   )
 
@@ -64,6 +63,7 @@ pbmc_mnp_seurat <- pbmc_pf_mnp_seurat[,pbmc_pf_mnp_seurat@meta.data$Tissue == "P
 pf_mnp_seurat <- pbmc_pf_mnp_seurat[,pbmc_pf_mnp_seurat@meta.data$Tissue == "PF"]
 
 figR3P19A <- DimPlot(pbmc_mnp_seurat, group.by = "manual_l3", label = T) + labs(title = "PBMC")# + theme(legend.position = "bottom")
+# ggsave("figR3P19Av2.pdf", plot = DimPlot(pbmc_mnp_seurat, group.by = "manual_l3", label = T, split.by = "Group") + labs(title = "PBMC"), width = 15, height = 5)
 figR3P19B_list <- lapply(
   data.frame(CB = colnames(pbmc_mnp_seurat),
              Embeddings(pbmc_mnp_seurat[["umap"]]),

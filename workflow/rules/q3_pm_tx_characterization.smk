@@ -231,6 +231,28 @@ rule subsetting_crcpmp_tx_macrophages_subsetting:
 # Analyses #
 ############
 
+rule markergenes_crcpmp_tx:
+  input:
+    crcpmp_tx_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds",
+  output:
+    crcpmp_tx_marker_list_rds="output/q3_pm_tx_characterization/analyses/crcpmp_tx_{level}_marker_list.Rds",
+  threads: 
+    8
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/analyses/markergenes_crcpmp_tx_{level}.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/analyses/markergenes_crcpmp_tx_{level}_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  params:
+    level="{level}",
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/markergenes_crcpmp_tx.R "{input.crcpmp_tx_seuratobject_rds}" "{output.crcpmp_tx_marker_list_rds}" "{params.level}" &> "{log}"
+    """
+
 rule markergenes_crcpmp_tx_macrophages:
   input:
     crcpmp_tx_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds",

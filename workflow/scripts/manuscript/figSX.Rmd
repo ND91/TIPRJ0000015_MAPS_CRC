@@ -430,6 +430,7 @@ pdf("umap_gcpmp_pf_macrophages_colmyeloidgenemarkers_colviridis.pdf", width = 15
 print(ggarrange(plotlist = umap_gc_pf_macrophages_colmyeloidgenemarkers_ggplotobj_list, nrow = 5, ncol = 5))
 dev.off()
 ```
+
 ### Dotplot GEX HC PF colored by l2/l3
 
 ```{r dotplot gex hc pf col_l2l3, fig.width = 7.25, fig.height=15}
