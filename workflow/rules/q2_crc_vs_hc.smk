@@ -22,6 +22,26 @@ rule subsetting_hc_crcpmp_pbmc_pf:
     Rscript workflow/scripts/q2_crc_vs_hc/subsetting_hc_crcpmp_pbmc_pf.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pbmc_pf_seuratobject_rds}" &> "{log}"
     """
 
+rule subsetting_hc_crcpmp_pf_allcells:
+  input:
+    curated_seuratobject_rds="output/curated/curated_SeuratObject.Rds",
+  output:
+    hc_crcpmp_pf_allcells_seuratobject_rds="output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_allcells_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q2_crc_vs_hc/subsets/subsetting_hc_crcpmp_pf_allcells.log",
+  benchmark:
+    "output/q2_crc_vs_hc/subsets/subsetting_hc_crcpmp_pf_allcells_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q2_crc_vs_hc/subsetting_hc_crcpmp_pf_allcells.R "{input.curated_seuratobject_rds}" "{output.hc_crcpmp_pf_allcells_seuratobject_rds}" &> "{log}"
+    """
+
 rule subsetting_hc_crcpmp_pf:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",

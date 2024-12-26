@@ -1,5 +1,5 @@
 ---
-title: 'Supplementary Figure 1: PerIS in homeostasis'
+title: 'Supplementary Figure 1: Homeostatic PerIS characterized using scRNA-seq and CITE-seq '
 author: "Andrew Y.F. Li Yim"
 date: '2023-07-26'
 output: html_document
@@ -16,6 +16,7 @@ library(viridis)
 library(readr)
 library(ggalt)
 library(ggblend)
+library(broom)
 ```
 
 If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If necessary, adjust paths accordingly.
@@ -25,10 +26,11 @@ If the snakemake pipeline was run as-is, the following files will be generated i
 ### Paths
 
 ```{r paths}
-base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc" # L-drive
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc"
 
 # Subsets
-seurat_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds")
+seurat_hc_pbmc_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds")
+seurat_hc_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds")
 
 # Analyses
 tam_markers_xlsx <- file.path(base_path, "config/genes_of_interest/tams_ma_2022.xlsx")
@@ -39,24 +41,29 @@ pf_macrophages_marker_list_rds <- file.path(base_path, "output/q1_pf_characteriz
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
 pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.xlsx")
 pf_myeloid_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_myeloid_heatmap_order.xlsx")
-pf_myeloid_markers <- readxl::read_excel(pf_myeloid_heatmap_order_xlsx)
 
 pf_myeloid_unsupervised_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_myeloid_unsupervised_heatmap_order.xlsx")
-pf_myeloid_unsupervised_markers <- readxl::read_excel(pf_myeloid_unsupervised_heatmap_order_xlsx)
-
 pf_macrophages_unsupervised_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_macrophages_unsupervised_heatmap_order.xlsx")
-pf_macrophages_unsupervised_markers <- readxl::read_excel(pf_macrophages_unsupervised_heatmap_order_xlsx)
 ```
 
 ### Import data
 
 ```{r load subsets}
-seurat_pf <- readRDS(seurat_pf_rds)
+seurat_hc_pbmc_pf <- readRDS(seurat_hc_pbmc_pf_rds)
+seurat_hc_pf <- readRDS(seurat_hc_pf_rds)
 ```
 
-```{r load marker gene analyses}
+```{r load marker genes}
+marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
+  dplyr::filter(Assay == "RNA")
+marker_proteins <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
+  dplyr::filter(Assay == "CITE")
 macrophage_marker_list <- readRDS(pf_macrophages_marker_list_rds)
 manual_l2l3_markerprotein_list <- readRDS(pf_l2l3_markerprotein_list_rds)
+
+pf_myeloid_markers <- readxl::read_excel(pf_myeloid_heatmap_order_xlsx)
+pf_myeloid_unsupervised_markers <- readxl::read_excel(pf_myeloid_unsupervised_heatmap_order_xlsx)
+pf_macrophages_unsupervised_markers <- readxl::read_excel(pf_macrophages_unsupervised_heatmap_order_xlsx)
 ```
 
 ### Output
@@ -89,7 +96,7 @@ celltype_order_pf_l1 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
                 modality == "gene") %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l1"])) %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l1"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 
 celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
@@ -97,7 +104,7 @@ celltype_order_pf_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
                 modality == "gene") %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l3"])) %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l3"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 
 celltype_order_pf_l2_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
@@ -105,7 +112,7 @@ celltype_order_pf_l2_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names =
                 modality == "gene") %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l3"])) %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l3"])) %>%
   dplyr::mutate(celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+"), "Mono-macs", celltype),
                 color = ifelse(celltype %in% c("Mono-macs"), "#E31A1C", color)) %>%
   unique() %>%
@@ -119,7 +126,48 @@ manual_l1_colors_pf <- celltype_order_pf_l1$color
 names(manual_l1_colors_pf) <- celltype_order_pf_l1$celltype
 ```
 
+## Prepare data
+
+```{r prepare subset}
+seurat_hc_pf_l2l3 <- seurat_hc_pf
+
+seurat_hc_pf_l2l3@meta.data <- seurat_hc_pf_l2l3@meta.data %>%
+  dplyr::mutate(celltype = manual_l3,
+                celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages C1Q+", "Macrophages SPP1+", "Macrophages VCAN+", "Macrophages VCAN+C1Q+"), "Mono-macs", as.character(celltype)),
+                celltype = factor(celltype, levels = celltype_order_pf_l2_l3$celltype))
+```
+
 ## Figures
+
+### UMAP HC PBMC PF colored by tissue
+
+```{r umap hc pbmc pf col_tissue split_tissue, fig.width=15, fig.height=7.5}
+umap_hc_pbmc_pf_coltissue_splittissue_ggplotobj <- data.frame(CB = colnames(seurat_hc_pbmc_pf),
+                                             Embeddings(seurat_hc_pbmc_pf[["umap"]]),
+                                             seurat_hc_pbmc_pf@meta.data) %>%
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 0.25, aes(col = Tissue)) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_colors) +
+  facet_wrap(~Tissue) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf(file.path(figS1Dir, "umap_hc_pbmc_pf_coltissue_splittissue.pdf"), width = 15, height = 7.5)
+print(umap_hc_pbmc_pf_coltissue_ggplotobj)
+dev.off()
+```
 
 ### UMAP HC PF colored by lineage markers
 
@@ -131,28 +179,28 @@ Here we characterize the PF-derived immune cells by superimposing the gene expre
 
 ```{r umap hc pf col_lineagemarkers, fig.width=10, fig.height=5.5}
 umap_hc_pf_collineagegexmarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf),
-             Embeddings(seurat_pf[["wnn.umap"]]),
-             seurat_pf@meta.data,
-             expr = GetAssayData(seurat_pf, assay = "RNA")["CD3D",],
+  data.frame(CB = colnames(seurat_hc_pf),
+             Embeddings(seurat_hc_pf[["wnn.umap"]]),
+             seurat_hc_pf@meta.data,
+             expr = GetAssayData(seurat_hc_pf, assay = "RNA")["CD3D",],
              Feature = "CD3/CD3D",
              Modality = "RNA") %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "RNA")["NCAM1",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "RNA")["NCAM1",],
                                   Feature = "CD56/NCAM1",
                                   Modality = "RNA")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "RNA")["MS4A1",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "RNA")["MS4A1",],
                                   Feature = "CD20/MS4A1",
                                   Modality = "RNA")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "RNA")["ITGAM",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "RNA")["ITGAM",],
                                   Feature = "CD11b/ITGAM",
                                   Modality = "RNA")) %>%
     dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
@@ -186,28 +234,28 @@ umap_hc_pf_collineagegexmarkers_ggplotobj_list <- lapply(
 )
 
 umap_hc_pf_collineagecitemarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf),
-             Embeddings(seurat_pf[["wnn.umap"]]),
-             seurat_pf@meta.data,
-             expr = GetAssayData(seurat_pf, assay = "CITE")["Hu.CD3-UCHT1",],
+  data.frame(CB = colnames(seurat_hc_pf),
+             Embeddings(seurat_hc_pf[["wnn.umap"]]),
+             seurat_hc_pf@meta.data,
+             expr = GetAssayData(seurat_hc_pf, assay = "CITE")["Hu.CD3-UCHT1",],
              Feature = "CD3/CD3D",
              Modality = "CITE")  %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "CITE")["Hu.CD56",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "CITE")["Hu.CD56",],
                                   Feature = "CD56/NCAM1",
                                   Modality = "CITE")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "CITE")["Hu.CD20-2H7",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "CITE")["Hu.CD20-2H7",],
                                   Feature = "CD20/MS4A1",
                                   Modality = "CITE")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf),
-                                  Embeddings(seurat_pf[["wnn.umap"]]),
-                                  seurat_pf@meta.data,
-                                  expr = GetAssayData(seurat_pf, assay = "CITE")["Hu.CD11b",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf),
+                                  Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                  seurat_hc_pf@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf, assay = "CITE")["Hu.CD11b",],
                                   Feature = "CD11b/ITGAM",
                                   Modality = "CITE")) %>%
     dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
@@ -250,14 +298,104 @@ print(umap_hc_pf_collineagecitegexmarkers_ggplotobj)
 dev.off()
 ```
 
+### Scatterplot correlation PEX GEX
+
+```{r scatterplot pex gex overlapping hc pf col_l1, fig.width = 7, fig.height=7}
+marker_gex <- GetAssayData(seurat_hc_pf, assay = "RNA")[which(rownames(GetAssayData(seurat_hc_pf, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
+marker_pex <- GetAssayData(seurat_hc_pf, assay = "CITE")[which(rownames(GetAssayData(seurat_hc_pf, assay = "CITE")) %in% unique(marker_proteins$FeatureID)), ]
+
+marker_gex_mean <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
+  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
+  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_pf@meta.data), 
+                               Lineage = seurat_hc_pf@meta.data[,"manual_l1"],
+                               Celltype = seurat_hc_pf@meta.data[,"manual_l3"]), 
+                    by = "CB") %>%
+  dplyr::mutate(Celltype = factor(Celltype), 
+                FeatureID = factor(FeatureID)) %>%
+  dplyr::group_by(Lineage, Celltype, FeatureID, .drop = F) %>%
+  dplyr::summarize(Mean = mean(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Mean = ifelse(is.na(Mean), 0, Mean),
+                Percentage = ifelse(is.na(Percentage), 0, Percentage),
+                Celltype = factor(Celltype, manual_l3_order),
+                FeatureID = factor(FeatureID, rev(marker_genes$FeatureID)),
+                Modality = "GEX")
+
+marker_pex_mean <- data.frame(FeatureID = rownames(marker_pex), marker_pex) %>%
+  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
+  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_pf@meta.data), 
+                               Celltype = seurat_hc_pf@meta.data[,"manual_l3"]), 
+                    by = "CB") %>%
+  dplyr::mutate(Celltype = factor(Celltype), 
+                FeatureID = factor(FeatureID)) %>%
+  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
+  dplyr::summarize(Mean = mean(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Mean = ifelse(is.na(Mean), 0, Mean),
+                Percentage = ifelse(is.na(Percentage), 0, Percentage),
+                Celltype = factor(Celltype, manual_l3_order),
+                FeatureID = factor(FeatureID, rev(marker_proteins$FeatureID)),
+                Modality = "PEX") %>%
+  dplyr::left_join(marker_proteins, by = "FeatureID")
+
+marker_gex_pex_mean <- marker_pex_mean %>%
+  dplyr::left_join(marker_gex_mean, by = c("gene" = "FeatureID",
+                                           "Celltype")) %>%
+  dplyr::rename(Mean_pex = Mean.x,
+                Mean_gex = Mean.y,
+                Percentage_gex = Percentage.x,
+                Percentage_pex = Percentage.y,
+                Modality_gex = Modality.x,
+                Modality_pex = Modality.y)
+
+scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1_ggplotobj <- marker_gex_pex_mean %>%
+  dplyr::filter(Mean_pex != 0,
+                Mean_gex != 0) %>%
+  ggplot(aes(x = Mean_pex, y = Mean_gex, col = Lineage)) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  geom_point_rast() +
+  geom_smooth(method=lm, se = F) +
+  labs(title = "Correlation mean expression",
+       x = "Protein expression",
+       y = "Gene expression") +
+  facet_wrap(~Lineage, nrow = 2, ncol = 2) +
+  theme_bw() +
+  scale_color_manual(values = manual_l1_colors_pf) +
+  theme(legend.position = "bottom", 
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+pdf(file.path(figS1Dir, "scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1.pdf"), width = 7, height=9)
+print(scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1_ggplotobj)
+dev.off()
+```
+
+Here we calculate the Pearson correlation coefficients between gene expression and protein expression per lineage. This data was added post-hoc to the visualization. 
+
+```{r pex gex overlapping hc pf correlation analysis}
+marker_gex_pex_mean %>%
+  dplyr::filter(Mean_pex != 0,
+                Mean_gex != 0) %>%
+  dplyr::group_by(Lineage) %>% 
+  do(tidy(cor.test(.$Mean_gex, .$Mean_pex, method = "pearson"))) %>%
+  write_delim(file.path(figS1Dir, "hc_pf_cellmarkers_pex_gex_overlapping_lm_pearson.csv"), delim = ",")
+```
+
+
 ### UMAP HC PF colored by donor
 
 Here we color the PF-derived immune cells by donor.
 
-```{r umap hc pf coldonor, fig.width=7.5, fig.height=7.5}
-umap_hc_pf_coldonor_ggplotobj <- data.frame(CB = colnames(seurat_pf),
-                                            Embeddings(seurat_pf[["wnn.umap"]]),
-                                            seurat_pf@meta.data) %>%
+```{r umap hc pf col_donor, fig.width=7.5, fig.height=7.5}
+umap_hc_pf_coldonor_ggplotobj <- data.frame(CB = colnames(seurat_hc_pf),
+                                            Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                            seurat_hc_pf@meta.data) %>%
   ggplot(aes(x = wnnUMAP_1, y = wnnUMAP_2, col = Donor)) +
   geom_point_rast(show.legend = T, size = 0.25) * (blend("lighten") + blend("multiply", alpha = 0.5))+
   labs(y = "",
@@ -299,10 +437,10 @@ marker_proteins_unsupervised <- gsub("-HIT2", "", marker_proteins_unsupervised)
 marker_proteins_unsupervised <- gsub("-M5E2", "", marker_proteins_unsupervised)
 marker_proteins_unsupervised <- gsub("-2H7", "", marker_proteins_unsupervised)
 
-Idents(seurat_pf_l2l3) <- "celltype"
-seurat_pf_l2l3_avexpr <- AverageExpression(seurat_pf_l2l3, return.seurat = T)
+Idents(seurat_hc_pf_l2l3) <- "celltype"
+seurat_hc_pf_l2l3_avexpr <- AverageExpression(seurat_hc_pf_l2l3, return.seurat = T)
 
-marker_avepexprl2l3_unsupervised_pex <- GetAssayData(seurat_pf_l2l3_avexpr, assay = "CITE")[marker_proteins_unsupervised_citenames, ]
+marker_avepexprl2l3_unsupervised_pex <- GetAssayData(seurat_hc_pf_l2l3_avexpr, assay = "CITE")[marker_proteins_unsupervised_citenames, ]
 
 heatmap_hc_pf_l2l3_cellpexunsupervisedmarkers_complexheatmapobj <- ComplexHeatmap::pheatmap(marker_avepexprl2l3_unsupervised_pex, 
                                                                                             color = PurpleAndYellow(1000),
@@ -317,54 +455,17 @@ print(heatmap_hc_pf_l2l3_cellpexunsupervisedmarkers_complexheatmapobj)
 dev.off()
 ```
 
-### Heatmap PEX HC PF colored by l2/l3
-
-Here we present a heatmap of the average expression of curated differentially expressed proteins for the PF-derived l2/l3 subsets.
-
-```{r heatmap pex hc pf col_cellmarkers l2 l3, fig.width=8.75, fig.height=9}
-marker_proteins <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
-  dplyr::filter(Assay == "CITE")
-
-seurat_pf_l2l3 <- seurat_pf
-
-seurat_pf_l2l3@meta.data <- seurat_pf_l2l3@meta.data %>%
-  dplyr::mutate(celltype = manual_l3,
-                celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages C1Q+", "Macrophages SPP1+", "Macrophages VCAN+", "Macrophages VCAN+C1Q+"), "Mono-macs", as.character(celltype)),
-                celltype = factor(celltype, levels = celltype_order_pf_l2_l3$celltype))
-
-Idents(seurat_pf_l2l3) <- "celltype"
-seurat_pf_l2l3_avexpr <- AverageExpression(seurat_pf_l2l3, return.seurat = T)
-
-marker_avepexprl2l3_pex <- GetAssayData(seurat_pf_l2l3_avexpr, assay = "CITE")[marker_proteins$FeatureID, ]
-
-heatmap_hc_pf_l2l3_cellpexmarkers_complexheatmapobj <- ComplexHeatmap::pheatmap(marker_avepexprl2l3_pex, 
-                                                                                color = PurpleAndYellow(1000),
-                                                                                labels_row = marker_proteins$protein,
-                                                                                cluster_rows = F, 
-                                                                                cluster_cols = F, 
-                                                                                scale = "row",
-                                                                                name = "Scaled median")
-
-pdf(file.path(figS1Dir, "heatmap_hc_pf_l2l3_cellpexmarkers.pdf"), width = 8.75, height = 9)
-print(heatmap_hc_pf_l2l3_cellpexmarkers_complexheatmapobj)
-dev.off()
-```
-
 ### Dotplot GEX HC PF colored by l2/l3
 
 Here we present a dotplot representing the percentage expressing cells and median expression of curated genes for the PF-derived l2/l3 subsets.
 
-```{r dotplot gex overlapping hc pf col_l2l3, fig.width = 7, fig.height=9}
-marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
-  dplyr::filter(Assay == "RNA")
-marker_gex <- GetAssayData(seurat_pf, assay = "RNA")[which(rownames(GetAssayData(seurat_pf_l2l3, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
-
+```{r dotplot gex overlapping hc pf col_l2l3, fig.width=7, fig.height=15}
 dotplot_hc_pf_l2l3_cellgexmarkers_ggplotobj <- data.frame(
   FeatureID = rownames(marker_gex), marker_gex) %>%
   tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
   dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_pf_l2l3@meta.data), 
-                               Celltype = seurat_pf_l2l3@meta.data[,"celltype"]), 
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_pf_l2l3@meta.data), 
+                               Celltype = seurat_hc_pf_l2l3@meta.data[,"celltype"]), 
                     by = "CB") %>%
   dplyr::mutate(Celltype = factor(Celltype), 
                 FeatureID = factor(FeatureID)) %>%
@@ -375,7 +476,6 @@ dotplot_hc_pf_l2l3_cellgexmarkers_ggplotobj <- data.frame(
                 Percentage = ifelse(is.na(Percentage), 0, Percentage),
                 Celltype = factor(Celltype, celltype_order_pf_l2_l3$celltype),
                 FeatureID = factor(FeatureID, rev(marker_genes$FeatureID))) %>% 
-  dplyr::filter(FeatureID %in% marker_proteins$gene) %>%
   ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
   geom_tile(alpha = 0, col = "grey") +
   geom_point(aes(size = Percentage)) +
@@ -391,92 +491,9 @@ dotplot_hc_pf_l2l3_cellgexmarkers_ggplotobj <- data.frame(
         panel.border = element_blank(),
         panel.spacing.x=unit(0, "lines"))
 
-pdf(file.path(figS1Dir, "dotplot_hc_pf_l2l3_cellgexmarkers.pdf"), width = 7, height=9)
+pdf(file.path(figS1Dir, "dotplot_hc_pf_l2l3_cellgexmarkers.pdf"), width = 7.5, height=15)
 print(dotplot_hc_pf_l2l3_cellgexmarkers_ggplotobj)
 dev.off()
 ```
 
-### Scatterplot correlation PEX GEX
 
-```{r scatterplot pex gex overlapping hc pf col_l1, fig.width = 7, fig.height=7}
-marker_pex <- GetAssayData(seurat_pf, assay = "CITE")[which(rownames(GetAssayData(seurat_pf, assay = "CITE")) %in% unique(marker_proteins$FeatureID)), ]
-
-marker_gex_mean <- data.frame(FeatureID = rownames(marker_gex), marker_gex) %>%
-  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
-  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_pf@meta.data), 
-                               Lineage = seurat_pf@meta.data[,"manual_l1"],
-                               Celltype = seurat_pf@meta.data[,"manual_l3"]), 
-                    by = "CB") %>%
-  dplyr::mutate(Celltype = factor(Celltype), 
-                FeatureID = factor(FeatureID)) %>%
-  dplyr::group_by(Lineage, Celltype, FeatureID, .drop = F) %>%
-  dplyr::summarize(Mean = mean(log1p(nUMIs)),
-                   Percentage = mean(nUMIs>0)*100) %>%
-  dplyr::mutate(Mean = ifelse(is.na(Mean), 0, Mean),
-                Percentage = ifelse(is.na(Percentage), 0, Percentage),
-                Celltype = factor(Celltype, manual_l3_order),
-                FeatureID = factor(FeatureID, rev(marker_genes$FeatureID)),
-                Modality = "GEX")
-
-marker_pex_mean <- data.frame(FeatureID = rownames(marker_pex), marker_pex) %>%
-  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
-  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_pf@meta.data), 
-                               Celltype = seurat_pf@meta.data[,"manual_l3"]), 
-                    by = "CB") %>%
-  dplyr::mutate(Celltype = factor(Celltype), 
-                FeatureID = factor(FeatureID)) %>%
-  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
-  dplyr::summarize(Mean = mean(log1p(nUMIs)),
-                   Percentage = mean(nUMIs>0)*100) %>%
-  dplyr::mutate(Mean = ifelse(is.na(Mean), 0, Mean),
-                Percentage = ifelse(is.na(Percentage), 0, Percentage),
-                Celltype = factor(Celltype, manual_l3_order),
-                FeatureID = factor(FeatureID, rev(marker_proteins$FeatureID)),
-                Modality = "PEX") %>%
-  dplyr::left_join(marker_proteins, by = "FeatureID")
-
-
-marker_gex_pex_mean <- marker_pex_mean %>%
-  dplyr::left_join(marker_gex_mean, by = c("gene" = "FeatureID",
-                                           "Celltype")) %>%
-  dplyr::rename(Mean_pex = Mean.x,
-                Mean_gex = Mean.y,
-                Percentage_gex = Percentage.x,
-                Percentage_pex = Percentage.y,
-                Modality_gex = Modality.x,
-                Modality_pex = Modality.y)
-
-scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1_ggplotobj <- marker_gex_pex_mean %>%
-  dplyr::filter(Mean_pex != 0,
-                Mean_gex != 0) %>%
-  ggplot(aes(x = Mean_pex, y = Mean_gex, col = Lineage)) +
-  geom_vline(xintercept = 0) +
-  geom_hline(yintercept = 0) +
-  geom_point_rast() +
-  geom_smooth(method=lm, se = F) +
-  labs(title = "Correlation mean expression",
-       x = "Protein expression",
-       y = "Gene expression") +
-  facet_wrap(~Lineage, nrow = 2, ncol = 2) +
-  theme_bw() +
-  scale_color_manual(values = manual_l1_colors_pf) +
-  theme(legend.position = "bottom", 
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        axis.ticks.y = element_blank(),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank())
-
-marker_gex_pex_mean %>%
-  dplyr::filter(Mean_pex != 0,
-                Mean_gex != 0) %>%
-  dplyr::group_by(Lineage) %>% 
-  do(tidy(cor.test(.$Mean_gex, .$Mean_pex, method = "pearson"))) %>%
-  write_delim(file.path(figS1Dir, "scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_lm_pearson.csv"), delim = ",")
-
-pdf(file.path(figS1Dir, "scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1.pdf"), width = 7, height=9)
-print(scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1_ggplotobj)
-dev.off()
-```

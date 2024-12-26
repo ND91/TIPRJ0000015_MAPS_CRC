@@ -87,7 +87,7 @@ seuratObject <- FindClusters(seuratObject, resolution = 1, verbose = FALSE)
 seuratObject <- RunUMAP(seuratObject, dims = 1:41, seed.use = 32)
 
 seuratObject@meta.data <- seuratObject@meta.data %>%
-  dplyr::mutate(manual_l2_monomac = ifelse(manual_l2 %in% c("Monocytes", "Macrophages"), "Mono-macs", manual_l1l2),
+  dplyr::mutate(manual_l2_monomac = ifelse(manual_l2 %in% c("Monocytes", "Macrophages"), "Mono-macs", manual_l2),
                 manual_l1l2 = manual_l1,
                 manual_l1l2 = ifelse(manual_l2 %in% c("Myofibroblasts", "Fibroblasts"), "(Myo)Fibroblasts", manual_l1l2),
                 manual_l1l2 = ifelse(manual_l2 %in% c("Monocytes", "Macrophages"), "Mono-macs", manual_l1l2),

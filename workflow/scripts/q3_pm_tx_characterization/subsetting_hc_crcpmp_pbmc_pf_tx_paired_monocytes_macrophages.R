@@ -36,12 +36,12 @@ seuratObject <- seuratObject[,which(seuratObject@meta.data$CellID %in% cells_sel
 # Normalize, reduce, and recluster
 seuratObject <- DietSeurat(seuratObject, counts = T, data = T, scale.data = F)
 seuratObject <- seuratObject[Matrix::rowSums(seuratObject) != 0, ]
-
+options(future.globals.maxSize= 20000*1024^2)
 seuratObject <- SCTransform(seuratObject, conserve.memory = T)
-seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 1326321)
-seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:43)
-seuratObject <- FindClusters(seuratObject, resolution = 0.5, verbose = FALSE)
-seuratObject <- RunUMAP(seuratObject, dims = 1:43, seed.use = 321677132)
+seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 326126)
+seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:42)
+seuratObject <- FindClusters(seuratObject, resolution = 1, verbose = FALSE)
+seuratObject <- RunUMAP(seuratObject, dims = 1:42, seed.use = 123632)
 
 # Save data
 saveRDS(seuratObject, hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_seurat_rds, compress = "gzip")

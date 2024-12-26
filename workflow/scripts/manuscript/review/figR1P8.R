@@ -14,8 +14,7 @@ require(pheatmap)
 require(ggpubr)
 require(ggdendro)
 
-seurat_rds <- args[1] #"output/q3_pm_tx_characterization/subsets/hc_crcpmp_pf_tx_macrophages_SeuratObject.Rds"
-seurat_rds <- "output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
+seurat_rds <- args[1] #"output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
 
 seuratObject <- readRDS(seurat_rds)
 

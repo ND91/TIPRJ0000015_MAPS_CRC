@@ -15,6 +15,7 @@ library(ggpubr)
 library(viridis)
 library(DESeq2)
 library(ggalt)
+library(ComplexHeatmap)
 ```
 
 If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If not, then adjust paths accordingly.    
@@ -24,9 +25,10 @@ If the snakemake pipeline was run as-is, the following files will be generated i
 ### Paths
 
 ```{r paths}
-base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc" # L-drive
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc"
 
 # Subsets
+seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds")
 seurat_crcpmp_tx_immune_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds")
 seurat_crcpmp_tx_monocytes_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds")
 seurat_crcpmp_tx_macrophages_rds <- file.path(base_path, "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds")
@@ -45,6 +47,7 @@ azizi2018_xlsx <- file.path(base_path, "config/genes_of_interest/m1_m2_azizi2018
 ### Import data
 
 ```{r load subsets}
+seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages <- readRDS(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_rds)
 seurat_crcpmp_tx_monocytes_macrophages <- readRDS(seurat_crcpmp_tx_monocytes_macrophages_rds)
 seurat_crcpmp_tx_macrophages <- readRDS(seurat_crcpmp_tx_macrophages_rds)
 seurat_crcpmp_tx_immune <- readRDS(seurat_crcpmp_tx_immune_rds)
@@ -72,6 +75,13 @@ dir.create(fig3Dir, recursive = T)
 ```{r plotting order}
 pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.xlsx")
 
+celltype_order_l2_monocytes_macrophages <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l2",
+                modality == "gene",
+                celltype %in% c("Monocytes", "Macrophages")) %>%
+  dplyr::select(celltype, color) %>%
+  unique()
+
 celltype_order_l3_tx_immune <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
   dplyr::filter(level == "manual_l3",
                 modality == "gene") %>%
@@ -98,10 +108,22 @@ celltype_order_l4_macrophages <- readxl::read_excel(celltype_markers_xlsx, col_n
   unique() %>%
   dplyr::filter(!is.na(color)) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
 ```
 
 ```{r colors}
-tissue_colors <- c(PBMC = "#F30000", PF = "#224FBD", TX = "#855522")
+tissue_colors <- c(PBMC = "#F30000", PF = "#224FBD", TX = "#808080")
+group_colors <- c(`HC` = "#93CEC1", `CRC+` = "#996633")
+tissue_group_colors <- c("PBMC HC" = "#58508d", "PBMC CRC+" = "#bc5090", "PF HC" = "#ff6361", "PF CRC+" = "#ffa600", "TX CRC+" = "#003f5c")
+donor_colors <- c(pt31 = "#e6194b", pt35 = "#3cb44b", pt37 = "#ffe119", pt71 = "#4363d8", pt73 = "#f58231", pt74 = "#911eb4", pt76 = "#46f0f0", pt78 = "#f032e6", pt87 = "#bcf60c", pt88 = "#fabebe", pt89 = "#008080", pt91 = "#e6beff", pt92 = "#9a6324")
+
+manual_l2_monocytes_macrophages_colors <- celltype_order_l2_monocytes_macrophages$color
+names(manual_l2_monocytes_macrophages_colors) <- celltype_order_l2_monocytes_macrophages$celltype
 
 manual_l3_tx_immune_colors <- celltype_order_l3_tx_immune$color
 names(manual_l3_tx_immune_colors) <- celltype_order_l3_tx_immune$number_subset
@@ -117,10 +139,12 @@ names(manual_l4_macrophages_colors) <- celltype_order_l4_macrophages$celltype
 
 ### UMAP PM-CRC TX monocytes and macrophages colored by l4
 
+Here we show the unsupervised clustering analysis using UMAP of CRC-PM patients PF-derived immune cells annotated using the celltype.
+
 ```{r umap crcpmp pf monocytes macrophages col_l4, fig.width=5, fig.height=5}
 umap_crcpmp_tx_monocytes_macrophages_coll4_ggplotobj <- data.frame(CB = colnames(seurat_crcpmp_tx_monocytes_macrophages),
-                                                                Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
-                                                                seurat_crcpmp_tx_monocytes_macrophages@meta.data) %>%
+                                                                   Embeddings(seurat_crcpmp_tx_monocytes_macrophages[["umap"]]),
+                                                                   seurat_crcpmp_tx_monocytes_macrophages@meta.data) %>%
   dplyr::mutate(Group = factor(Group, levels = c("HC", "CRC+")),
                 celltype = factor(manual_l4, levels = celltype_order_l4_monocytes_macrophages$celltype),
                 celltype_number = as.numeric(celltype),
@@ -160,6 +184,7 @@ pdf(file.path(fig3Dir, "umap_crcpmp_tx_monocytes_macrophages_coll4.pdf"), width 
 print(umap_crcpmp_tx_monocytes_macrophages_coll4_ggplotobj)
 dev.off()
 ```
+
 ### Boxplot PM-CRC TX macrophage subsets percentage relative to all macrophages
 
 Here we prepare the data for scattered boxplots depicting the TX-derived macrophage subsets relative to the total TX-derived macrophage population. Actual data was plotted in Graphpad Prism.
@@ -179,10 +204,10 @@ seurat_crcpmp_tx_macrophages@meta.data %>%
   readr::write_csv(file = file.path(fig3Dir, "crcpmp_tx_macrophages_l3rl2.csv"))
 ```
 
-
-
-
 ### UMAP PM-CRC TX monocytes and macrophages colored by myeloid markers
+
+Here we characterize the TX-derived monocytes and macrophages by superimposing the gene expression of the following genes on the respective UMAP configuration:
+- Resident macrophage (VSIG4)
 
 ```{r umap crcpmp tx monocytes macrophages col_myeloidmarkers, fig.width=3, fig.height=3}
 umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_ggplotobj <- data.frame(
@@ -215,123 +240,147 @@ print(umap_crcpmp_tx_monocytes_macrophages_colmyeloidgenemarkers_ggplotobj)
 dev.off()
 ```
 
-### Dotplot GEX PM-CRC TX macrophages chemotaxis receptors
+### UMAP HC PM-CRC PBMC PF TX monocytes and macrophages colored by l2
 
-```{r dotplot gex crcpmp tx macrophages col_chemotaxisreceptors, fig.width=1.7, fig.height=4.5}
-chemotaxis_receptors <- c("CCR1", "CCR3", "CCR4", "CCR5", "CCR6", "CXCR3", "CXCR4", "CSF1R", "CSF2RA")
+Here we show the unsupervised clustering analysis using UMAP of HC and CRC-PM patients PBMC-, PF-, and TX-derived monocytes and macrophages annotated using the celltype.
 
-crcpmp_tx_macrophages_chemotaxisreceptors_gex <- GetAssayData(seurat_crcpmp_tx_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_crcpmp_tx_macrophages, assay = "RNA")) %in% chemotaxis_receptors), ]
-
-dotplot_gex_crcpmp_tx_macrophages_colchemotaxisreceptors_ggplotobj <- data.frame(FeatureID = chemotaxis_receptors, crcpmp_tx_macrophages_chemotaxisreceptors_gex) %>%
-  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
-  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_crcpmp_tx_macrophages@meta.data), 
-                               Celltype = seurat_crcpmp_tx_macrophages@meta.data[,"manual_l4"]), 
-                    by = "CB") %>%
-  dplyr::mutate(Celltype = factor(Celltype), 
-                FeatureID = factor(FeatureID)) %>%
-  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
-  dplyr::summarize(Median = median(log1p(nUMIs)),
-                   Percentage = mean(nUMIs>0)*100) %>%
-  dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
-                Percentage = ifelse(is.na(Percentage), 0, Percentage),
-                Celltype = factor(Celltype, celltype_order_l4_macrophages$celltype),
-                FeatureID = factor(FeatureID, rev(chemotaxis_receptors))) %>% 
-  ggplot(aes(x = Celltype, y = FeatureID, col = Median)) +
-  geom_tile(alpha = 0, col = "grey") +
-  geom_point(aes(size = Percentage)) +
-  scale_color_continuous(low = "#132B43", high = "#56B1F7") + 
-  theme_bw() +
-  theme(legend.position = "bottom", 
-        axis.title.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        panel.grid.major = element_blank(), 
+```{r umap crcpmp pf monocytes macrophages col_l2, fig.width=5, fig.height=5}
+umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coll2_ggplotobj <- data.frame(
+  CB = colnames(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages),
+  Embeddings(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages[["umap"]]),
+  seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data) %>%
+  ggplot(aes(x = umap_1, y = umap_2, col = manual_l2)) +
+  geom_point_rast(show.legend = T, size = 1) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = manual_l2_monocytes_macrophages_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        panel.spacing.y=unit(0, "lines"))
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
 
-pdf(file.path(fig3Dir, "dotplot_gex_crcpmp_tx_macrophages_colchemotaxisreceptors.pdf"), width = 1.7, height = 4.5)
-print(dotplot_gex_crcpmp_tx_macrophages_colchemotaxisreceptors_ggplotobj)
+pdf(file.path(fig3Dir, "umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coll2.pdf"), width = 7.5, height = 7.5)
+print(umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coll2_ggplotobj)
 dev.off()
 ```
 
-## Radarplot PM-CRC TX Macrophages median TAM classification
+### UMAP HC PM-CRC PBMC PF TX monocytes and macrophages colored by tissue_group
 
-```{r radarplot crcpmp tx macrophages median tam classification, fig.width = 6, fig.height = 5}
-radarplot_crcpmp_tx_macrophages_mediantamclassification_ggplotobj <- crcpmp_pf_tx_paired_macrophages_tamannotation %>%
-  dplyr::select(c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4", "Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM")) %>%
-  tidyr::pivot_longer(-c("CellID", "SampleID", "Donor", "Tissue", "manual_l1", "manual_l2", "manual_l3", "manual_l4"), names_to = "TAM", values_to = "UCell") %>%
-  dplyr::filter(Tissue == "TX") %>%
-  dplyr::group_by(manual_l4, TAM) %>%
-  dplyr::summarize(median_UCell = median(UCell)) %>%
-  dplyr::mutate(TAM = factor(TAM, levels = c("Angio", "IFN", "INFLAM", "LA", "Prolif", "Reg", "RTM"))) %>%
-  ggplot(aes(x = TAM, y = median_UCell, col = manual_l4, group = manual_l4)) +
-  geom_point() +
-  geom_encircle(expand = 0, s_shape=1, size = 2) +
-  scale_color_manual(values = manual_l4_macrophages_colors) +
-  labs(y = "Median UCell Score") +
-  coord_polar() +
-  theme_bw() +
-  theme(legend.title = element_blank(),
-        axis.title.x = element_blank())
+Here we show the unsupervised clustering analysis using UMAP of HC and CRC-PM patients PBMC-, PF-, and TX-derived monocytes and macrophages annotated using a combination of the group and celltype.
 
-pdf(file.path(fig3Dir, "radarplot_crcpmp_pf_tx_macrophages_mediantamclassification.pdf"), width = 5, height=5.5)
-print(radarplot_crcpmp_tx_macrophages_mediantamclassification_ggplotobj)
+```{r umap hc crcpmp pbmc pf tx monocytes macrophages col_tissuegroup, fig.width=5, fig.height=5}
+umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coltissuegroup_ggplotobj <- data.frame(
+  CB = colnames(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages),
+  Embeddings(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages[["umap"]]),
+  seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data) %>%
+  dplyr::mutate(Tissue_group = factor(paste0(Tissue, " ", Group), levels = c("PBMC HC", "PBMC CRC+", "PF HC", "PF CRC+", "TX CRC+"))) %>%
+  ggplot(aes(x = umap_1, y = umap_2, col = Tissue_group)) +
+  geom_point_rast(show.legend = T, size = 1) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_group_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf(file.path(fig3Dir, "umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coltissuegroup.pdf"), width = 7.5, height = 7.5)
+print(umap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coltissuegroup_ggplotobj)
 dev.off()
 ```
 
-### Dotplot GEX PM-CRC TX macrophages TAM markers
+### Heatmap HC PM-CRC PBMC PF TX monocytes and macrophages
 
-```{r dotplot gex crcpmp tx col_tammarkers, fig.width = 7, fig.height=2.75}
-seurat_crcpmp_tx_macrophages_tamgenes <- subset(seurat_crcpmp_tx_macrophages, features = unique(tam_markers$Gene))
-Idents(seurat_crcpmp_tx_macrophages_tamgenes) <- "manual_l4"
+Here we show a dendrogram/heatmap of the HC and CRC-PM patients PBMC-, PF-, and TX-derived monocytes and macrophages to show the distance between each celltype using the Euclidian distance.
 
-seurat_crcpmp_tx_macrophages_tamgenes_markergenes <- FindAllMarkers(seurat_crcpmp_tx_macrophages_tamgenes, only.pos = T)
-seurat_crcpmp_tx_macrophages_tamgenes_markergenes <- split(seurat_crcpmp_tx_macrophages_tamgenes_markergenes, seurat_crcpmp_tx_macrophages_tamgenes_markergenes$cluster)
-seurat_crcpmp_tx_macrophages_tamgenes_markergenes <- seurat_crcpmp_tx_macrophages_tamgenes_markergenes[c("Macrophages SPP1+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+", "Macrophages VCAN+")]
+```{r heatmap HC PM-CRC PBMC PF TX monocytes and macrophages, fig.height = 12, fig.width = 12}
+seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data$Tissue_group_donor_l2 <- paste0(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data$Tissue, " ", seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data$Group, " ", seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data$Donor, " ", seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data$manual_l2)
 
-tammarkergenes <- unique(unlist(lapply(seurat_crcpmp_tx_macrophages_tamgenes_markergenes, function(macrophage){
-  macrophage$gene[1:5]
-})))
+counts_tissue_group <- GetAssayData(seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages, assay = "RNA", layer = "counts") %*% model.matrix(~0+Tissue_group_donor_l2, data = seurat_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages@meta.data)
+colnames(counts_tissue_group) <- gsub("Tissue_group_donor_l2", "", colnames(counts_tissue_group))
 
-macrophages_tammarkergenes_gex <- GetAssayData(seurat_crcpmp_tx_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_crcpmp_tx_macrophages, assay = "RNA")) %in% tammarkergenes), ]
+counts_tissue_group <- counts_tissue_group[which(Matrix::rowSums(counts_tissue_group) != 0),]
 
-dotplot_crcpmp_tx_macrophages_coltammarkers_ggplotobj <- data.frame(
-  FeatureID = rownames(macrophages_tammarkergenes_gex), macrophages_tammarkergenes_gex) %>%
-  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
-  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_crcpmp_tx_macrophages@meta.data), 
-                               Celltype = seurat_crcpmp_tx_macrophages@meta.data[,"manual_l4"]), 
-                    by = "CB") %>%
-  dplyr::mutate(Celltype = factor(Celltype), 
-                FeatureID = factor(FeatureID)) %>%
-  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
-  dplyr::summarize(Median = median(log1p(nUMIs)),
-                   Percentage = mean(nUMIs>0)*100) %>%
-  dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
-                Percentage = ifelse(is.na(Percentage), 0, Percentage),
-                Celltype = factor(Celltype, c("Macrophages SPP1+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+", "Macrophages VCAN+")),
-                FeatureID = factor(FeatureID, rev(tammarkergenes[which(tammarkergenes %in% FeatureID)]))) %>% 
-  ggplot(aes(x = FeatureID, y = Celltype, col = Median)) +
-  geom_tile(alpha = 0, col = "grey") +
-  geom_point(aes(size = Percentage)) +
-  scale_color_viridis() +
-  theme_bw() +
-  theme(legend.position = "bottom", 
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        axis.title.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        panel.spacing.x=unit(0, "lines"))
+rld_tissue_group <- DESeq2::rlog(as.matrix(counts_tissue_group))
+colnames(rld_tissue_group) <- gsub("TX", "PM", colnames(rld_tissue_group))
+colnames(rld_tissue_group) <- gsub("CRC\\+", "PM-CRC", colnames(rld_tissue_group))
 
-pdf(file.path(fig3Dir, "dotplot_crcpmp_tx_macrophages_coltammarkers.pdf"), width = 7, height=2.75)
-print(dotplot_crcpmp_tx_macrophages_coltammarkers_ggplotobj)
+dist_rld_tissue_group <- dist(t(rld_tissue_group), method = "euclidean")
+hclust_rld_tissue_group <- hclust(dist_rld_tissue_group)
+dend_hclust_dist_rld_tissue_group <- as.dendrogram(hclust_rld_tissue_group)
+
+metadata_tissue_group <- data.frame(do.call(rbind, strsplit(colnames(counts_tissue_group), split = " ")), row.names = colnames(counts_tissue_group)) %>%
+  dplyr::rename(Tissue = X1,
+                Group = X2,
+                Donor = X3,
+                Celltype = X4) %>%
+  dplyr::mutate(Group = ifelse(Group == "CRC", "CRC+", Group))
+
+heatmap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coleucdist <- Heatmap(as.matrix(dist_rld_tissue_group), 
+                  col = colorRampPalette(c("blue", "white", "red"))(10000), 
+                  cluster_rows = dend_hclust_dist_rld_tissue_group, 
+                  cluster_columns = dend_hclust_dist_rld_tissue_group,
+                  top_annotation = HeatmapAnnotation(
+                    Tissue = metadata_tissue_group$Tissue,
+                    Group = metadata_tissue_group$Group,
+                    Celltype = metadata_tissue_group$Celltype,
+                    col = list(Tissue = tissue_colors,
+                               Group = group_colors,
+                               Celltype = c(Macrophages = "#F8766D", Monocytes = "#00BFC4")),
+                    gp = gpar(col = "black")),
+                  heatmap_legend_param = list(title = "Euclidian Distance"))
+
+pdf(file.path(fig3Dir, "heatmap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coleucdist.pdf"), width = 14, height = 12)
+print(heatmap_hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_coleucdist)
+dev.off()
+
+# Circular
+phylo_hclust_rld_tissue_group <- as.phylo(hclust_rld_tissue_group)
+
+dend_hclust_dist_rld_tissue_group_ggtree <- ggtree(phylo_hclust_rld_tissue_group, layout = "circular")
+dend_hclust_dist_rld_tissue_group_ggtree <- gheatmap(dend_hclust_dist_rld_tissue_group_ggtree, metadata_tissue_group %>% 
+           dplyr::select(Celltype),
+           offset = 1, 
+           width = .1,
+           colnames_angle = 90, 
+           colnames_offset_y = .35)
+dend_hclust_dist_rld_tissue_group_ggtree <- gheatmap(dend_hclust_dist_rld_tissue_group_ggtree, metadata_tissue_group %>% 
+           dplyr::select(Group),
+           offset = 11, 
+           width = .1,
+           colnames_angle = 90, 
+           colnames_offset_y = .25)
+dend_hclust_dist_rld_tissue_group_ggtree <- gheatmap(dend_hclust_dist_rld_tissue_group_ggtree, metadata_tissue_group %>% 
+           dplyr::select(Tissue),
+           offset = 21, 
+           width = .1,
+           colnames_angle = 90, 
+           colnames_offset_y = .15)
+dend_hclust_dist_rld_tissue_group_ggtree <- gheatmap(dend_hclust_dist_rld_tissue_group_ggtree, metadata_tissue_group %>% 
+           dplyr::select(Donor),
+           offset = 31, 
+           width = .1,
+           colnames_angle = 90, 
+           colnames_offset_y = .15) +
+  scale_fill_manual(values = c(tissue_colors, group_colors, manual_l2_monocytes_macrophages_colors, donor_colors))
+
+pdf(file.path(fig3Dir, "dendrogram_hclust_dist_rld_tissue_group_circular_ptcol.pdf"), width = 10, height = 10)
+print(dend_hclust_dist_rld_tissue_group_ggtree)
 dev.off()
 ```

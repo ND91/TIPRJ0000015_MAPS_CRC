@@ -24,12 +24,12 @@ If the snakemake pipeline was run as-is, the following files will be generated i
 ### Paths
 
 ```{r paths}
-base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc" # L-drive
+base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MAPS/maps_crc" 
 
 # Subsets
-seurat_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds")
-seurat_pf_myeloid_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_Myeloid_SeuratObject.Rds")
-seurat_pf_macrophages_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds")
+seurat_hc_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds")
+seurat_hc_pf_myeloid_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_Myeloid_SeuratObject.Rds")
+seurat_hc_pf_macrophages_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds")
 
 seurat_pbmc_pf_liver_colon_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds")
 seurat_liver_macrophages_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/liver_macrophages_SeuratObject.Rds")
@@ -49,11 +49,11 @@ pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.
 ### Import data
 
 ```{r load subsets}
-seurat_pf <- readRDS(seurat_pf_rds)
-seurat_pf_myeloid <- readRDS(seurat_pf_myeloid_rds)
+seurat_hc_pf <- readRDS(seurat_hc_pf_rds)
+seurat_hc_pf_myeloid <- readRDS(seurat_hc_pf_myeloid_rds)
 
 seurat_pbmc_pf_liver_colon <- readRDS(seurat_pbmc_pf_liver_colon_rds)
-seurat_pf_macrophages <- readRDS(seurat_pf_macrophages_rds)
+seurat_hc_pf_macrophages <- readRDS(seurat_hc_pf_macrophages_rds)
 seurat_liver_macrophages <- readRDS(seurat_liver_macrophages_rds)
 seurat_colon_macrophages <- readRDS(seurat_colon_macrophages_rds)
 ```
@@ -82,7 +82,7 @@ celltype_order_pf_l2_l3 <- readxl::read_excel(celltype_markers_xlsx, col_names =
                 modality == "gene") %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l3"])) %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l3"])) %>%
   dplyr::mutate(celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+"), "Mono-macs", celltype),
                 color = ifelse(celltype %in% c("Mono-macs"), "#E31A1C", color)) %>%
   unique() %>%
@@ -93,7 +93,7 @@ celltype_order_pf_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
                 modality == "gene") %>%
   dplyr::select(celltype, color) %>%
   unique() %>%
-  dplyr::filter(celltype %in% unique(seurat_pf@meta.data[,"manual_l4"])) %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l4"])) %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 ```
 
@@ -109,14 +109,43 @@ names(manual_l4_colors_pf) <- celltype_order_pf_l4$celltype
 
 ## Figures
 
+### UMAP HC PBMC PF colored by tissue
+
+```{r umap hc pbmc pf coltissue, fig.width=7.5, fig.height=7.5}
+umap_hc_pbmc_pf_coltissue_ggplotobj <- data.frame(CB = colnames(seurat_hc_pbmc_pf),
+                                             Embeddings(seurat_hc_pbmc_pf[["umap"]]),
+                                             seurat_hc_pbmc_pf@meta.data) %>%
+  ggplot(aes(x = UMAP_1, y = UMAP_2)) +
+  geom_point_rast(show.legend = T, size = 0.25, aes(col = Tissue)) +
+  labs(y = "",
+       x = "") +
+  guides(colour = guide_legend(override.aes = list(size = 3))) +
+  scale_color_manual(values = tissue_colors) +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(face = "bold"))
+
+pdf(file.path(figS1Dir, "umap_hc_pbmc_pf_coltissue.pdf"), width = 7.5, height = 7.5)
+print(umap_hc_pbmc_pf_coltissue_ggplotobj)
+dev.off()
+```
+
 ### UMAP HC PF colored by celltype
 
 Here we show the unsupervised clustering analysis using UMAP of PF-derived immune cells annotated using the celltype.
 
 ```{r umap hc pf colcelltype, fig.width=7.5, fig.height=7.5}
-umap_hc_pf_colcelltype_ggplotobj <- data.frame(CB = colnames(seurat_pf),
-                                               Embeddings(seurat_pf[["wnn.umap"]]),
-                                               seurat_pf@meta.data) %>%
+umap_hc_pf_colcelltype_ggplotobj <- data.frame(CB = colnames(seurat_hc_pf),
+                                               Embeddings(seurat_hc_pf[["wnn.umap"]]),
+                                               seurat_hc_pf@meta.data) %>%
   dplyr::mutate(celltype = manual_l3,
                 celltype = ifelse(celltype %in% c("Classical monocytes", "Macrophages C1Q+", "Macrophages SPP1+", "Macrophages VCAN+", "Macrophages VCAN+C1Q+"), "Mono-macs", celltype),
                 celltype = factor(celltype, levels = celltype_order_pf_l2_l3$celltype),
@@ -160,45 +189,45 @@ Here we characterize the PF-derived ITGAM+ myeloid cells by superimposing the ge
 
 ```{r umap hc pf col_myeloidgexmarkers, fig.width=9, fig.height=9}
 umap_hc_pf_myeloid_colmyeloidgenemarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf_myeloid),
-             Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-             seurat_pf_myeloid@meta.data,
-             expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CLEC4C",],
+  data.frame(CB = colnames(seurat_hc_pf_myeloid),
+             Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+             seurat_hc_pf_myeloid@meta.data,
+             expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["CLEC4C",],
              Feature = "CLEC4C") %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["XCR1",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["XCR1",],
                                   Feature = "XCR1")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CD1C",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["CD1C",],
                                   Feature = "CD1C")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["ITGAM",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["ITGAM",],
                                   Feature = "ITGAM")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["MARCO",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["MARCO",],
                                   Feature = "MARCO")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CD14",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["CD14",],
                                   Feature = "CD14")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CCR2",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["CCR2",],
                                   Feature = "CCR2")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "RNA")["CD163",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "RNA")["CD163",],
                                   Feature = "CD163")) %>%
     dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
                   Feature = factor(Feature, levels = c("CLEC4C", "XCR1", "CD1C", "ITGAM", "MARCO", "CD14", "CCR2", "CD163"))) %>%
@@ -241,25 +270,25 @@ Here we characterize the PF-derived ITGAM+ myeloid cells by superimposing the pr
 
 ```{r umap hc pf col_myeloidcitemarkers, fig.width=12, fig.height=3}
 umap_hc_pf_myeloid_colmyeloidcitemarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf_myeloid),
-             Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-             seurat_pf_myeloid@meta.data,
-             expr = GetAssayData(seurat_pf_myeloid, assay = "CITE")["Hu.CD1c",],
+  data.frame(CB = colnames(seurat_hc_pf_myeloid),
+             Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+             seurat_hc_pf_myeloid@meta.data,
+             expr = GetAssayData(seurat_hc_pf_myeloid, assay = "CITE")["Hu.CD1c",],
              Feature = "CD1C") %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "CITE")["Hu.CD14-M5E2",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "CITE")["Hu.CD14-M5E2",],
                                   Feature = "CD14")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "CITE")["Hu.CD192",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "CITE")["Hu.CD192",],
                                   Feature = "CD192")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_myeloid),
-                                  Embeddings(seurat_pf_myeloid[["wnn.umap"]]),
-                                  seurat_pf_myeloid@meta.data,
-                                  expr = GetAssayData(seurat_pf_myeloid, assay = "CITE")["Hu.CD163",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_myeloid),
+                                  Embeddings(seurat_hc_pf_myeloid[["wnn.umap"]]),
+                                  seurat_hc_pf_myeloid@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_myeloid, assay = "CITE")["Hu.CD163",],
                                   Feature = "CD163")) %>%
     dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
                   Feature = factor(Feature, levels = c("CD1C", "CD14", "CD192", "CD163"))) %>%
@@ -306,35 +335,35 @@ Here we characterize the PF-derived CD163+ macrophages by superimposing the gene
 
 ```{r umap hc pf macrophages col_macrophagegexmarkers, fig.width=9, fig.height=6}
 umap_hc_pf_macrophages_colmacrophagegexmarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf_macrophages),
-             Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-             seurat_pf_macrophages@meta.data,
-             expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["VSIG4",],
+  data.frame(CB = colnames(seurat_hc_pf_macrophages),
+             Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+             seurat_hc_pf_macrophages@meta.data,
+             expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["VSIG4",],
              Feature = "VSIG4") %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-                                  seurat_pf_macrophages@meta.data,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["CD163",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+                                  seurat_hc_pf_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["CD163",],
                                   Feature = "CD163")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-                                  seurat_pf_macrophages@meta.data,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["VCAN",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+                                  seurat_hc_pf_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["VCAN",],
                                   Feature = "VCAN")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-                                  seurat_pf_macrophages@meta.data,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["CCR2",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+                                  seurat_hc_pf_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["CCR2",],
                                   Feature = "CCR2")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-                                  seurat_pf_macrophages@meta.data,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["C1QA",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+                                  seurat_hc_pf_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["C1QA",],
                                   Feature = "C1QA")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-                                  seurat_pf_macrophages@meta.data,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["SPP1",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+                                  seurat_hc_pf_macrophages@meta.data,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["SPP1",],
                                   Feature = "SPP1")) %>%
     dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
                   Feature = factor(Feature, levels = c("VSIG4", "CD163", "VCAN", "CCR2", "C1QA", "SPP1"))) %>%
@@ -371,10 +400,10 @@ Here we characterize the CD163+ macrophages by superimposing the protein express
 
 ```{r umap hc pf macrophages col_macrophagecitemarkers, fig.width=3, fig.height=3}
 umap_hc_pf_macrophages_colmacrophagecitemarkers_ggplotobj <- 
-  data.frame(CB = colnames(seurat_pf_macrophages),
-             Embeddings(seurat_pf_macrophages[["gex.umap"]]),
-             seurat_pf_macrophages@meta.data,
-             expr = GetAssayData(seurat_pf_macrophages, assay = "CITE")["Hu.CD163",],
+  data.frame(CB = colnames(seurat_hc_pf_macrophages),
+             Embeddings(seurat_hc_pf_macrophages[["gex.umap"]]),
+             seurat_hc_pf_macrophages@meta.data,
+             expr = GetAssayData(seurat_hc_pf_macrophages, assay = "CITE")["Hu.CD163",],
              Feature = "CD163") %>%
   dplyr::mutate(expr_rank = rank(expr, ties.method="first"),
                 Feature = factor(Feature, levels = c("CD163"))) %>%
@@ -406,7 +435,7 @@ dev.off()
 Here we prepare the data for scattered boxplots depicting the PF-derived myeloid subsets relative to the total PF-derived myeloid population. Actual data was plotted in Graphpad Prism.
 
 ```{r hc pf myeloid l3rl1 data}
-seurat_pf_myeloid@meta.data %>%
+seurat_hc_pf_myeloid@meta.data %>%
   dplyr::group_by(manual_l3, SampleID, .drop = T) %>% 
   dplyr::summarise(Ncells = n()) %>%
   dplyr::ungroup() %>%
@@ -452,13 +481,13 @@ Here we present a dotplot representing the percentage expressing cells and media
 
 ```{r dotplot gex hc pf col_m1m2gexmarkers, fig.width = 1.7, fig.height=4.25}
 m1m2gexmarkers <- c("IL1B", "S100A8", "IDO1", "APOE", "FOLR2", "MRC1", "TREM2", "MERTK")
-macrophages_m1m2gexmarkers_gex <- GetAssayData(seurat_pf_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_pf_macrophages, assay = "RNA")) %in% m1m2gexmarkers), ]
+macrophages_m1m2gexmarkers_gex <- GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")) %in% m1m2gexmarkers), ]
 
 dotplot_hc_pf_macrophages_m1m2gexmarkers_ggplotobj <- data.frame(FeatureID = rownames(macrophages_m1m2gexmarkers_gex), macrophages_m1m2gexmarkers_gex) %>%
   tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
   dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
-  dplyr::inner_join(data.frame(CB = rownames(seurat_pf_macrophages@meta.data), 
-                               Celltype = seurat_pf_macrophages@meta.data[,"manual_l4"]), 
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_pf_macrophages@meta.data), 
+                               Celltype = seurat_hc_pf_macrophages@meta.data[,"manual_l4"]), 
                     by = "CB") %>%
   dplyr::mutate(Celltype = factor(Celltype), 
                 FeatureID = factor(FeatureID)) %>%
@@ -497,11 +526,11 @@ Here we present the average expression of the 5 most specifically differentially
 pf_macrophages_markerproteins_topproteins <- unique(unlist(lapply(pf_macrophages_markerproteins_list[c("Macrophages VCAN+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+","Macrophages SPP1+")], function(i){i[1:5,"gene"]})))
 pf_macrophages_markerproteins_topproteins <- pf_macrophages_markerproteins_topproteins[!is.na(pf_macrophages_markerproteins_topproteins)]
 
-seurat_pf_macrophages@meta.data$manual_l4 <- factor(seurat_pf_macrophages@meta.data$manual_l4, levels = c("Macrophages VCAN+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+","Macrophages SPP1+"))
+seurat_hc_pf_macrophages@meta.data$manual_l4 <- factor(seurat_hc_pf_macrophages@meta.data$manual_l4, levels = c("Macrophages VCAN+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+","Macrophages SPP1+"))
 
-Idents(seurat_pf_macrophages) <- "manual_l4"
+Idents(seurat_hc_pf_macrophages) <- "manual_l4"
 
-marker_pf_macrophages_avepexprl4_pex <- GetAssayData(AverageExpression(seurat_pf_macrophages, return.seurat = T), assay = "CITE")[pf_macrophages_markerproteins_topproteins, c("Macrophages VCAN+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+", "Macrophages SPP1+")] 
+marker_pf_macrophages_avepexprl4_pex <- GetAssayData(AverageExpression(seurat_hc_pf_macrophages, return.seurat = T), assay = "CITE")[pf_macrophages_markerproteins_topproteins, c("Macrophages VCAN+", "Macrophages VCAN+C1Q+", "Macrophages C1Q+", "Macrophages SPP1+")] 
 
 heatmap_hc_pf_macrophages_macrophagescitemarkers_complexheatmapobj <- ComplexHeatmap::pheatmap(
   marker_pf_macrophages_avepexprl4_pex, 
@@ -525,11 +554,11 @@ Here we characterize the PF-, liver-, and colon-derived CD163+ macrophages by su
 
 ```{r umap hc pf liver colon macrophages col_macrophagemarkers, fig.width = 9, fig.height = 6}
 umap_hc_pf_liver_colon_macrophages_colmacrophagemarkers_ggplotobj_list <- lapply(
-  data.frame(CB = colnames(seurat_pf_macrophages),
-             Embeddings(seurat_pf_macrophages[["wnn.umap"]]),
-             manual_l2 = seurat_pf_macrophages@meta.data$manual_l2,
-             manual_l3 = seurat_pf_macrophages@meta.data$manual_l3,
-             expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["SPP1",],
+  data.frame(CB = colnames(seurat_hc_pf_macrophages),
+             Embeddings(seurat_hc_pf_macrophages[["wnn.umap"]]),
+             manual_l2 = seurat_hc_pf_macrophages@meta.data$manual_l2,
+             manual_l3 = seurat_hc_pf_macrophages@meta.data$manual_l3,
+             expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["SPP1",],
              Feature = "SPP1",
              Tissue = "PF") %>%
     dplyr::rename(UMAP_1 = wnnUMAP_1,
@@ -548,11 +577,11 @@ umap_hc_pf_liver_colon_macrophages_colmacrophagemarkers_ggplotobj_list <- lapply
                                   expr = 0, #Hotfix, else I get an error, there is no SPP1 in liver
                                   Feature = "SPP1",
                                   Tissue = "Liver")) %>%
-    dplyr::rows_append(data.frame(CB = colnames(seurat_pf_macrophages),
-                                  Embeddings(seurat_pf_macrophages[["wnn.umap"]]),
-                                  manual_l2 = seurat_pf_macrophages@meta.data$manual_l2,
-                                  manual_l3 = seurat_pf_macrophages@meta.data$manual_l3,
-                                  expr = GetAssayData(seurat_pf_macrophages, assay = "RNA")["C1QA",],
+    dplyr::rows_append(data.frame(CB = colnames(seurat_hc_pf_macrophages),
+                                  Embeddings(seurat_hc_pf_macrophages[["wnn.umap"]]),
+                                  manual_l2 = seurat_hc_pf_macrophages@meta.data$manual_l2,
+                                  manual_l3 = seurat_hc_pf_macrophages@meta.data$manual_l3,
+                                  expr = GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")["C1QA",],
                                   Feature = "C1QA",
                                   Tissue = "PF") %>%
                          dplyr::rename(UMAP_1 = wnnUMAP_1,

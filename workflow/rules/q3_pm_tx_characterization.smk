@@ -122,6 +122,26 @@ rule subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3:
     Rscript workflow/scripts/subsetting/subsetting_crcpmp_pbmc_pf_tx_t_paired_cdr3_subsetting.R "{input.airr_merged_csv}" "{output.crcpmp_pbmc_pf_tx_t_paired_cdr3_airr_csv}" &> "{log}"
     """
 
+rule subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages:
+  input:
+    live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
+  output:
+    hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds="output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
+  threads: 
+    1
+  conda:
+    "../envs/r.yaml",
+  log:
+    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages.log",
+  benchmark:
+    "output/q3_pm_tx_characterization/subsets/subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_benchmark.txt",
+  resources:
+    mem_mb=60000,
+  shell:
+    """
+    Rscript workflow/scripts/q3_pm_tx_characterization/subsetting_hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages.R "{input.live_singlet_nonproliferating_seuratobject_rds}" "{output.hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_seuratobject_rds}" &> "{log}"
+    """
+
 rule subsetting_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages:
   input:
     live_singlet_nonproliferating_seuratobject_rds="output/subsets/live_singlet_nonproliferating_SeuratObject.Rds",
