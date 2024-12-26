@@ -32,12 +32,6 @@ runs_nonfbc = pd.Series(sample_files_nonfbc['Run_ID'])
 
 # FBC
 sample_files_fbc['Well10X_str'] = sample_files_fbc['Well10X'].astype(str)
-# lookup_fbc = pd.DataFrame(list(zip(sample_files_fbc['Run_ID'],
-#                                    sample_files_fbc[['Run_ID', 'Well10X_str']].agg('-'.join, axis=1))),
-#                           columns = ['Run', 'Run_well']).drop_duplicates()
-# 
-# print(lookup_fbc)
-
 runs_fbc = pd.Series(sample_files_fbc['Run_ID'].unique())
 
 runs = pd.concat([runs_nonfbc, runs_fbc], axis=0)
@@ -45,11 +39,7 @@ runs = pd.concat([runs_nonfbc, runs_fbc], axis=0)
 levels = ["manual_l1","manual_l2","manual_l3","manual_l4"]
 relative_levels = ["manual_l1rNULL", "manual_l2rNULL", "manual_l3rNULL", "manual_l4rNULL", "manual_l2rmanual_l1", "manual_l3rmanual_l1", "manual_l4rmanual_l1", "manual_l3rmanual_l2", "manual_l4rmanual_l2", "manual_l4rmanual_l3"]
 tissues=["PBMC","PF"]
-
-pbmc_pf_tx_tissue_comparisons = ["PMp_PFvPBMC", "PMp_TXvPF", "PMp_TXvPBMC", "PMn_PFvPBMC"]
-pbmc_pf_tx_cleaned_cd45p_tissue_comparisons = ["PMp_PFvPBMC", "PMp_TXvPF", "PMp_TXvPBMC", "PMn_PFvPBMC"]
-pbmc_pf_tx_paired_tissue_comparisons = ["PMp_PFvPBMC", "PMp_TXvPF", "PMp_TXvPBMC"]
-subsets = ["T","NKILC","Myeloid","MNP"]
+lineages = ["T","NKILC","Myeloid","MNP"]
 
 outputdir = config['output_dir']
 
@@ -57,12 +47,11 @@ include: "rules/fbc_preparation.smk"
 include: "rules/resources.smk"
 include: "rules/cellranger.smk"
 include: "rules/velocyto.smk"
-include: "rules/trust4.smk"
 include: "rules/preparation.smk"
-include: "rules/q1_pf_characterization.smk"
-include: "rules/q2_crc_vs_hc.smk"
-include: "rules/q3_pm_tx_characterization.smk"
-#include: "rules/figures.smk"
+# include: "rules/q1_pf_characterization.smk"
+# include: "rules/q2_crc_vs_hc.smk"
+# include: "rules/q3_pm_tx_characterization.smk"
+include: "rules/analyses.smk"
 
 wildcard_constraints:
   run='|'.join([re.escape(x) for x in runs]),
@@ -71,87 +60,50 @@ wildcard_constraints:
   level='|'.join([re.escape(x) for x in levels]),
   tissue='|'.join([re.escape(x) for x in tissues]),
   relative_level='|'.join([re.escape(x) for x in relative_levels]),
-  subset='|'.join([re.escape(x) for x in subsets]),
-  pbmc_pf_tx_tissue_comparison='|'.join([re.escape(x) for x in pbmc_pf_tx_tissue_comparisons]),
-  pbmc_pf_tx_cleaned_cd45p_tissue_comparison='|'.join([re.escape(x) for x in pbmc_pf_tx_cleaned_cd45p_tissue_comparisons]),
-  pbmc_pf_tx_paired_tissue_comparison='|'.join([re.escape(x) for x in pbmc_pf_tx_paired_tissue_comparisons]),
+  lineage='|'.join([re.escape(x) for x in lineages]),
   
 rule all:
   input:
     # Preparation
-    #expand("resources/fastq/{fastq_fn}", fastq_fn=fastq_fns),
-    #expand("config/samples/fbcs/{run_fbc}_libraries.csv", run_fbc=runs_fbc)
-    #expand("output/cellranger/{run_nonfbc}", run_nonfbc=runs_nonfbc),
-    #expand("output/cellranger/{run_fbc}", run_fbc=runs_fbc),
-    #expand("output/cellranger/{run}/velocyto/{run}.loom", run=runs),
     "output/merged/velocyto_merged.loom",
     "output/curated/velocyto_curated.loom",
-    #expand("output/normalized/{run}_normalized_SeuratObject.Rds", run=runs), 
-    #expand("output/cell_metadata/celltype_annotation/{run}_celltype_annotated_SeuratObject.Rds", run=runs),
-    #expand("output/cell_metadata/sample_metadata_annotation/{run}_sample_metadata_annotated_SeuratObject.Rds", run=runs),
-    #"output/merged/merged_SeuratObject.Rds",
-    #"output/curated/curated_SeuratObject.Rds",
-    #"resources/GSE134355/gse134355_reannotated_SeuratObject.Rds",
-    # "resources/GSE134355/gse134355_adult_immune_SeuratObject.Rds",
+    "output/curated/curated_SeuratObject.Rds",
     "resources/GSE134355/gse134355_adult_immune_reannotated_SeuratObject.Rds",
-    #"resources/gse178318/gse178318_annotated_SeuratObject.Rds",
     "resources/GSE178318/gse178318_macrophages_SeuratObject.Rds",
-    "resources/GSE201333/gse201333_lung_SeuratObject.Rds",
-    "resources/GSE201333/gse201333_lymphnode_SeuratObject.Rds",
     "resources/GSE201333/gse201333_reannotated_SeuratObject.Rds",
-    # Q1: PF characterization
+    # Part 1: PF of healthy individuals
+    ## Subsetting and combining cells
+    "output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds",
     "output/q1_pf_characterization/subsets/hc_pbmc_SeuratObject.Rds",
-    # "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
-    # "output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds",
-    # "output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
+    "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds",
+    expand("output/q1_pf_characterization/subsets/hc_pf_{lineage}_SeuratObject.Rds", lineage = lineages),
     "output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds",
-    "output/q1_pf_characterization/subsets/pf_liver_colon_macrophages_SeuratObject.Rds",
-    "output/q1_pf_characterization/subsets/liver_macrophages_SeuratObject.Rds",
+    "output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds",
     "output/q1_pf_characterization/subsets/liver_mnp_SeuratObject.Rds",
-    "output/q1_pf_characterization/subsets/colon_macrophages_SeuratObject.Rds",
+    "output/q1_pf_characterization/subsets/liver_macrophages_SeuratObject.Rds",
     "output/q1_pf_characterization/subsets/colon_mnp_SeuratObject.Rds",
-    expand("output/q1_pf_characterization/subsets/hc_pf_{subset}_SeuratObject.Rds", subset = subsets),
-    # "output/q1_pf_characterization/figures/umap_hc_pbmc_pf_coltissue.pdf",
-    "output/q1_pf_characterization/subsets/hc_pf_macrophages_trajectory_sce.Rds",
-    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{level}_deseq2_list.Rds", level = ["manual_l2","manual_l3"]),
-    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{level}_fgsea_list.Rds", level = ["manual_l2","manual_l3"]),
-    expand("output/q1_pf_characterization/analyses/hc_pfvpbmc_{comparison}_dacs_list.Rds", comparison = ["l3rl0", "l2rl0"]),
+    "output/q1_pf_characterization/subsets/colon_macrophages_SeuratObject.Rds",
+    ## Analyses
     "output/q1_pf_characterization/analyses/hc_pf_manual_l2l3_markerproteins_list.Rds",
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_markerproteins_list.Rds",
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_markergenes_list.Rds",
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_fgsea_list.Rds",
     "output/q1_pf_characterization/analyses/hc_pf_macrophages_tamannotation_scores.Rds",
-    expand("output/q1_pf_characterization/analyses/hc_pfvlivervcolon_{comparison}_dacs_list.Rds", comparison = ["l3rl0", "l2rl0"]),
-    #"output/analyses/hc_pf_m1vm2_deseq2_list.Rds",
-    #"output/q1_pf_characterization/analyses/hc_pf_macrophages_scvelo_anndata.h5ad", # Not entirely sure why this does not work, it works if I run it (in the same environment)
-    # Q2: CRC vs HC
-    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pbmc_pf_SeuratObject.Rds",
-    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pbmc_pf_monocytes_macrophages_SeuratObject.Rds",
+    # Part 2: PF of PM-CRC patients
+    ## Subsetting and combining cells
     "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_allcells_SeuratObject.Rds",
     "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds",
-    "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_macrophages_SeuratObject.Rds",
-    expand("output/q2_crc_vs_hc/analyses/dacs_crcvhc_{tissue}_{comparison}_list.Rds", tissue = ["PBMC", "PF"], comparison = ["l2rl0", "l3rl0", "l3rl1", "l4rl0", "l4rl1", "l4rl2"]),
+    "output/q2_crc_vs_hc/subsets/crcpmp_pf_macrophages_SeuratObject.Rds",
+    ## Analyses
+    expand("output/q2_crc_vs_hc/analyses/degs_crcvhc_{tissue}_{level}_list.Rds", tissue = ["PBMC", "PF"], level = ["manual_l2","manual_l3","manual_l4"]),
     expand("output/q2_crc_vs_hc/analyses/fgsea_crcvhc_{tissue}_{level}_list.Rds", tissue = ["PBMC", "PF"], level = ["manual_l2","manual_l3","manual_l4"]),
-    expand("output/q2_crc_vs_hc/analyses/degs_crc_pci_pf_macrophages_{level}_list.Rds", level = "manual_l4"),
-    "output/q2_crc_vs_hc/analyses/hc_crcpmp_pbmc_pf_monocytes_macrophages_sce_ss.Rds",
-    #expand("output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_nichenet_{celltype}.Rds", celltype = ["GDT","Plasma B","Neutrophils","CD4 MAIT","Macrophages VCAN+C1Q+","CD8 ITGA1+","PDCs","Mast","CD8 TCM","NK CD16-XCL1bright","CD8 TEM","ILCs","CD4 TEM","NK CD16+","Macrophages VCAN+","CD4 Treg","NK CD16-XCL1dim","CD8 NKT","Macrophages C1Q+","CD4 TCM","CD8 MAIT","CDC2s","CD4 CTL"]),
-    # #expand("output/analyses/hc_crc_pmp_{txdonor}_pf_macrophages_l3_crcpmpvhc_deseq2_list.Rds", txdonor=["txonly","alltx"]),
-    # "output/q2_crc_vs_hc/analyses/hc_crcpmp_pf_macrophages_scvelo_anndata.h5ad",
-    # # Q3: PM TX characterization
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pbmc_pf_tx_paired_SeuratObject.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_immune_SeuratObject.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds",
+    # Part 3: TX of PM-CRC patients
+    ## Subsetting and combining cells
+    "output/q3_pm_tx_characterization/subsets/hc_crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
     "output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds",
     "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_SeuratObject.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pbmc_pf_tx_paired_monocytes_macrophages_SeuratObject.Rds",
-    expand("output/q3_pm_tx_characterization/analyses/crcpmp_txvpf_{level}_deseq2_list.Rds", level = ["manual_l2","manual_l3","manual_l4"]),
-    expand("output/q3_pm_tx_characterization/analyses/crcpmp_tx_{level}_marker_list.Rds", level = ["manual_l2","manual_l3","manual_l4"]),
-    "output/q3_pm_tx_characterization/analyses/crcpmp_tx_macrophages_marker_list.Rds",
-    "output/q3_pm_tx_characterization/analyses/fgsea_crcpmp_tx_macrophages_marker_list.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_monocytes_macrophages_trajectory_sce.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_trajectory_sce.Rds",
-    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_trajectory_sce.Rds",
+    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds",
+    ## Analyses
     "output/q3_pm_tx_characterization/analyses/crcpmp_pf_tx_paired_macrophages_tamannotation.Rds",
+    "output/q3_pm_tx_characterization/subsets/crcpmp_tx_macrophages_trajectory_sce.Rds",
     "output/q3_pm_tx_characterization/analyses/crcpmp_tx_monocytes_macrophages_scvelo_anndata.h5ad",

@@ -58,11 +58,10 @@ def main(cellmetadata_csv, counts_mtx, features_csv, umap_csv, pca_csv, velocyto
     scv.tl.velocity_graph(velocyto_curated_subset_anndata)
     scv.tl.velocity_pseudotime(velocyto_curated_subset_anndata)
     
-    # velocyto_curated_subset_anndata.uns['manual_l4_colors']=['#F07E1A', '#B2D06C','#F9CDE2','#F8B366','#BB80B6', "#E31D1E"] # TX monocytes macrophages
+    velocyto_curated_subset_anndata.uns['manual_l4_colors']=['#F07E1A', '#B2D06C','#F9CDE2','#F8B366','#BB80B6', "#E31D1E"] # TX monocytes macrophages
     # velocyto_curated_subset_anndata.uns['manual_l4_colors']=['#B2D06C','#F9CDE2','#F8B366','#BB80B6'] # HC macrophages
     # scv.pl.velocity_embedding_stream(velocyto_curated_subset_anndata, basis="umap", color="manual_l4", save = "hc_pf_macrophages.pdf", legend_loc="best", dpi=300, figsize=[6.5,6.5], alpha = 1, density = 1, size = 200)
-    # scv.pl.velocity_embedding_stream(velocyto_curated_subset_anndata, basis="umap", color="manual_l4", save = "crcpmp_pf_macrophages.pdf", legend_loc="best", dpi=300, figsize=[6.5,6.5], alpha = 1, density = 1, size = 200)
-    # scv.pl.velocity_embedding_stream(velocyto_curated_subset_anndata, basis="umap", color="manual_l4", save = "crcpmp_tx_monocytes_macrophages.pdf", legend_loc="best", dpi=300, figsize=[6.5,6.5], alpha = 1, density = 1, size = 200)
+    scv.pl.velocity_embedding_stream(velocyto_curated_subset_anndata, basis="umap", color="manual_l4", save = "crcpmp_tx_monocytes_macrophages.pdf", legend_loc="best", dpi=300, figsize=[6.5,6.5], alpha = 1, density = 1, size = 200)
     
     velocyto_curated_subset_anndata.write_h5ad(scvelo_anndata_h5ad)
     velocyto_curated_subset_anndata.obs.to_csv(scvelo_anndata_cellmetadata_csv)

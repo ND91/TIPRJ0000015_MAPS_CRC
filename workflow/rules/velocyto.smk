@@ -1,9 +1,6 @@
 rule velocyto:
   input:
-    #bc_tsv="output/velocyto/{run}/filtered_barcodes.tsv",
     cellrangerdir="output/cellranger/{run}",
-    # bam_cellpossorted="output/velocyto/{run}/cellsorted_possorted_genome_bam.bam",
-    # #bai_cellpossorted="output/velocyto/{run}/cellsorted_possorted_genome_bam.bam.bai",
     genesgtf="resources/reference_genome/genes/genes.gtf",
     repeatmaskgtf=config['repeatmask_file'],
   output:
@@ -63,23 +60,3 @@ rule loom_curate:
     """
     python3 workflow/scripts/preparation/loom_curate.py --merged_loom "{input.velocyto_merged_loom}" --cellmetadata_csv "{input.metadata_csv}" --annotated_loom "{output.velocyto_curated_loom}" &> "{log}"
     """
-
-# rule loom_to_sce:
-#   input:
-#     velocyto_merged_loom="output/merged/velocyto_merged.loom",
-#   output:
-#     velocyto_sce_rds="output/merged/velocyto_merged_sce.Rds",
-#   conda:
-#     "../envs/velocyto.yaml",
-#   log:
-#     "output/merged/loom_to_sce.log",
-#   threads: 
-#     8
-#   benchmark:
-#     "output/merged/loom_to_sce_benchmark.txt",
-#   resources:
-#     mem_mb=64000,
-#   shell:
-#     """
-#     Rscript workflow/scripts/preparation/loom_to_sce.R "{input.velocyto_merged_loom:q}" "{output.velocyto_sce_rds:q}" &> "{log}"
-#     """
