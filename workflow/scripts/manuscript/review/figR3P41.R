@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 3, point 41.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,10 +9,10 @@ require(ggrastr)
 require(ggpubr)
 require(ggrepel)
 
-seurat_gcpmp_pf_rds <- args[1] #"resources/gastric_cancer/maps_gc_pf_txpts.Rds"
-seurat_gcpmp_pf_mnp_rds <- args[2] #"resources/gastric_cancer/maps_gc_pf_mnp_txpts.Rds"
-seurat_gcpmp_pf_macrophages_rds <- args[3] #"resources/gastric_cancer/maps_gc_pf_macrophages_txpts.Rds"
-seurat_gcpmp_tx_macrophages_rds <- args[4] #"resources/gastric_cancer/maps_gc_tx_macrophages.Rds"
+seurat_gcpmp_pf_rds <- "resources/gastric_cancer/maps_gc_pf_txpts.Rds"
+seurat_gcpmp_pf_mnp_rds <- "resources/gastric_cancer/maps_gc_pf_mnp_txpts.Rds"
+seurat_gcpmp_pf_macrophages_rds <- "resources/gastric_cancer/maps_gc_pf_macrophages_txpts.Rds"
+seurat_gcpmp_tx_macrophages_rds <- "resources/gastric_cancer/maps_gc_tx_macrophages.Rds"
 
 celltype_order_l3_monocytes_macrophages <- data.frame(celltype = c("Classical monocytes", "Non-classical monocytes", "Macrophages VCAN+", "Macrophages C1Q+", "Macrophages VCAN+C1Q+", "Macrophages SPP1+"),
                                                       color = c("#FF7F00", "#FFFF33", "#FDB462", "#B3DE69", "#BC80BD", "#FCCDE5"),

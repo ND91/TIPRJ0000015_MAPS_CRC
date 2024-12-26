@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 3, point 34.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,9 +9,9 @@ require(pheatmap)
 require(pheatmap)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds"
-celltype_markers_xlsx <- args[2] #"config/order/celltype_markers.xlsx"
-pf_heatmap_order_xlsx <- args[3] #"config/order/q1_pf_heatmap_order.xlsx"
+seurat_rds <- "output/q3_pm_tx_characterization/subsets/crcpmp_tx_immune_SeuratObject.Rds"
+celltype_markers_xlsx <- "config/order/celltype_markers.xlsx"
+pf_heatmap_order_xlsx <- "config/order/q1_pf_heatmap_order.xlsx"
 
 tx_seurat <- readRDS(seurat_rds)
 Idents(tx_seurat) <- "manual_l3"

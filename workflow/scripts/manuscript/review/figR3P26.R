@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 3, point 26.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,7 +9,7 @@ require(pheatmap)
 require(pheatmap)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds"
+seurat_rds <- "output/q3_pm_tx_characterization/subsets/crcpmp_tx_monocytes_macrophages_SeuratObject.Rds"
 
 tx_mnp_seurat <- readRDS(seurat_rds)
 Idents(tx_mnp_seurat) <- "manual_l3"

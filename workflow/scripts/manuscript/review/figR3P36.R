@@ -2,18 +2,13 @@
 
 # This script generates a figure addressing reviewer 3, point 36.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
-celltype_markers_xlsx <- args[2] #"config/order/celltype_markers.xlsx"
+seurat_rds <- "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
+celltype_markers_xlsx <- "config/order/celltype_markers.xlsx"
 
 hc_pf_seurat <- readRDS(seurat_rds)
 Idents(hc_pf_seurat) <- "manual_l3"

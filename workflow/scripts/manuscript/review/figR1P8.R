@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 1, point 8.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,7 +9,7 @@ require(pheatmap)
 require(ggpubr)
 require(ggdendro)
 
-seurat_rds <- args[1] #"output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
+seurat_rds <- "output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
 
 seuratObject <- readRDS(seurat_rds)
 

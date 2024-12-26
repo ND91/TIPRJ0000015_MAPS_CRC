@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 1, point 4.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -16,7 +11,7 @@ require(ggplotify)
 require(ggrastr)
 require(viridis)
 
-seurat_rds <- args[1] #"output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
+seurat_rds <- "output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
 
 seuratObject <- readRDS(seurat_rds)
 
@@ -146,5 +141,4 @@ figR1P4D <- ggarrange(plotlist = figR1P4D_list, nrow = 2, ncol = 4)
 figR1P4ABC <- ggarrange(figR1P4A, figR1P4B, figR1P4C, nrow = 1, ncol = 3, labels = c("A", "B", "C"))
 figR1P4 <- ggarrange(figR1P4ABC, figR1P4D, nrow = 2, ncol = 1, heights = c(1, 1.5), labels = c("", "D"))
 
-# ggsave(filename = "figR1P4.pdf", width = 20, height = 12, units = "in")
 ggsave(filename = "figR1P4.pdf", width = 20, height = 16, units = "in")

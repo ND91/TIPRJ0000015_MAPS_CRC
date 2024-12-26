@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 3, point 25.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop(paste0("Script needs 2 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,7 +9,7 @@ require(pheatmap)
 require(pheatmap)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds"
+seurat_rds <- "output/q2_crc_vs_hc/subsets/hc_crcpmp_pf_SeuratObject.Rds"
 
 group_colors <- c(`HC` = "#93CEC1", `CRC+` = "#996633")
 

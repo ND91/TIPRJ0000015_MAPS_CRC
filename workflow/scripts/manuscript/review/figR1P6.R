@@ -10,13 +10,8 @@ require(viridis)
 require(ggpubr)
 require(ggrepel)
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) {
-  stop(paste0("Script needs 2 arguments. Current input is:", args))
-}
-
-seurat_rds <- args[1] #"output/curated/curated_SeuratObject.Rds"
-celltype_markers_xlsx <- args[2] #"config/order/celltype_markers.xlsx"
+seurat_rds <- "output/curated/curated_SeuratObject.Rds"
+celltype_markers_xlsx <- "config/order/celltype_markers.xlsx"
 
 seuratObject <- readRDS(seurat_rds)
 

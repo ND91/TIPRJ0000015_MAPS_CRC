@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 2, point 1.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -14,10 +9,10 @@ require(pheatmap)
 require(pheatmap)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
-hc_pf_seurat_rds <- args[2] #"output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
-macrophages_pf_tx_seurat_rds <- args[3] #"output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds"
-celltype_markers_xlsx <- args[4] #"config/order/celltype_markers.xlsx"
+seurat_rds <- "output/subsets/live_singlet_nonproliferating_SeuratObject.Rds"
+hc_pf_seurat_rds <- "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
+macrophages_pf_tx_seurat_rds <- "output/q3_pm_tx_characterization/subsets/crcpmp_pf_tx_paired_macrophages_SeuratObject.Rds"
+celltype_markers_xlsx <- "config/order/celltype_markers.xlsx"
 
 hc_pf_seurat <- readRDS(hc_pf_seurat_rds)
 

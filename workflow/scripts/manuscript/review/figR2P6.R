@@ -2,11 +2,6 @@
 
 # This script generates a figure addressing reviewer 2, point 6.
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 1) {
-  stop(paste0("Script needs 1 arguments. Current input is:", args))
-}
-
 require(Seurat)
 require(dplyr)
 require(ggplot2)
@@ -15,8 +10,8 @@ require(viridis)
 require(pheatmap)
 require(ggpubr)
 
-seurat_rds <- args[1] #"output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
-seurat_myeloid_rds <- args[2] #"output/q1_pf_characterization/subsets/hc_pf_Myeloid_SeuratObject.Rds"
+seurat_rds <- "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds"
+seurat_myeloid_rds <- "output/q1_pf_characterization/subsets/hc_pf_Myeloid_SeuratObject.Rds"
 
 seuratObject_pf <- readRDS(seurat_rds)
 seuratObject_pf_myeloid <- readRDS(seurat_myeloid_rds)
