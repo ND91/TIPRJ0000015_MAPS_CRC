@@ -191,6 +191,21 @@ stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj <- seurat_hc_crcpmp_pf_macr
 pdf(file.path(fig2Dir, "stackedbarplot_crcpmp_pf_macrophages_coll4.pdf"), width = 3, height = 5)
 print(stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj)
 dev.off()
+
+stackedbarplot_crcpmp_pf_macrophages_coll4_ggplotobj <- seurat_hc_crcpmp_pf_macrophages@meta.data %>%
+  dplyr::group_by(manual_l4, Group, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Group), tidyr::nesting(manual_l4), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(Group) %>%
+  dplyr::mutate(manual_l4 = factor(manual_l4, levels = celltype_order_pf_macrophages_l4$celltype),
+                Nsample = sum(Ncells),
+                Ncellprop = Ncells/Nsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Group = factor(Group, levels = c("HC", "CRC+"))) %>%
+  dplyr::rename(Celltype = manual_l4) %>%
+  readr::write_csv(file.path(fig2Dir, "stackedbarplot_crcpmp_pf_macrophages.csv"))
 ```
 
 ### Heatmap pathways PM-CRC vs HC PF macrophages
@@ -288,8 +303,8 @@ Here we show the unsupervised clustering analysis using UMAP of all PF-derived c
 
 ```{r umap hc crcpmp pf allcells col_l1l2, fig.width=8, fig.height=7.5}
 umap_hc_crcpmp_pf_allcells_coll1l2_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpmp_pf_allcells),
-                                         Embeddings(seurat_hc_crcpmp_pf_allcells[["umap"]]),
-                                         seurat_hc_crcpmp_pf_allcells@meta.data) %>%
+                                                           Embeddings(seurat_hc_crcpmp_pf_allcells[["umap"]]),
+                                                           seurat_hc_crcpmp_pf_allcells@meta.data) %>%
   dplyr::mutate(celltype = manual_l1l2,
                 celltype = factor(celltype, levels = celltype_order_pf_l1l2$celltype),
                 celltype_number = as.numeric(celltype),
@@ -329,8 +344,8 @@ dev.off()
 ### UMAP HC PM-CRC PF all cells colored by immunosuppressive genes
 
 Here we characterize the PF-derived cells by superimposing the gene expression of the following genes (GEX) on the respective UMAP configuration:
-- IL10
-- VEGFA
+- Immunosuppression (IL10)
+- Immunosuppression (VEGFA)
 
 ```{r umap_hc_crcpmp_pf_allcells_colimmunosuppressivemarkers, fig.width = 10, fig.height = 5.5}
 umap_hc_crcpmp_pf_allcells_colimmunosuppressivemarkers_ggplotobj_list <- lapply(

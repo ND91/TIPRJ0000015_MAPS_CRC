@@ -12,6 +12,7 @@ library(dplyr)
 library(ggrastr)
 library(ggrepel)
 library(ggpubr)
+library(viridis)
 ```
 
 If the snakemake pipeline was run as-is, the following files will be generated in the folder from which the pipeline was run. If necessary, adjust paths accordingly.
@@ -103,13 +104,13 @@ seurat_gc_pf_l2l3@meta.data <- seurat_gc_pf_l2l3@meta.data %>%
 
 ### UMAP PM-GC PF colored by lineage genes
 
-Here we characterize the GC+ PF-derived immune cells by superimposing the gene expression of the following genes on the respective UMAP configuration:
+Here we characterize the PM-GC PF-derived immune cells by superimposing the gene expression of the following genes on the respective UMAP configuration:
 - T (CD3D)
 - NK/ILC (NCAM1)
 - B (MS4A1)
 - Myeloid (ITGAM)
 
-```{r umap gc pf col_lineage_markers, fig.width=10, fig.height=3}
+```{r umap gcpmp pf col_lineage_markers, fig.width=10, fig.height=3}
 umap_gc_pf_collineagegenemarkers_ggplotobj_list <- lapply(
   data.frame(CB = colnames(seurat_gc_pf),
              Embeddings(seurat_gc_pf[["umap"]]),
@@ -178,7 +179,7 @@ Here we characterize the PM-GC PF-derived mononuclear phagocytes by superimposin
 - Monocyte-macrophages (CD14)
 - Monocytes (CCR2)
 
-```{r umap gc pf col_myeloidgenemarkers, fig.width=6, fig.height=12}
+```{r umap gcpmp pf col_myeloidgenemarkers, fig.width=6, fig.height=12}
 umap_gc_pf_mnp_colmnpgenemarkers_ggplotobj_list <- lapply(
   data.frame(CB = colnames(seurat_gc_pf_myeloid),
              Embeddings(seurat_gc_pf_myeloid[["umap"]]),
@@ -258,7 +259,7 @@ Here we characterize the PM-GC PF-derived macrophages by superimposing the gene 
 - Monocytes (CCR2)
 - Macrophages SPP1+ [aka "CMs SPP1+"] (SPP1)
 
-```{r umap gc pm macrophages col_macrophagegenemarkers, fig.width=6, fig.height=9}
+```{r umap gcpmp pf macrophages col_macrophagegenemarkers, fig.width=6, fig.height=9}
 umap_gc_pf_macrophages_colmacrophagegenemarkers_ggplotobj_list <- lapply(
   data.frame(CB = colnames(seurat_gcpmp_pf_macrophages),
              Embeddings(seurat_gcpmp_pf_macrophages[["umap"]]),
@@ -313,9 +314,11 @@ print(ggarrange(plotlist = umap_gc_pf_macrophages_colmacrophagegenemarkers_ggplo
 dev.off()
 ```
 
-### Dotplot GEX HC PF colored by l2/l3
+### Dotplot GEX PM-GC PF colored by l2/l3
 
-```{r dotplot gex hc pf col_l2l3, fig.width = 7.25, fig.height=15}
+Here we present a dotplot representing the percentage expressing cells and median expression of curated genes for the PM-GC PF samples.
+
+```{r dotplot gex gcpmp pf col_l2l3, fig.width = 7.25, fig.height=15}
 marker_gc_pf_gex <- GetAssayData(seurat_gc_pf_l2l3, assay = "RNA")[which(rownames(GetAssayData(seurat_gc_pf_l2l3, assay = "RNA")) %in% unique(marker_genes$FeatureID)), ]
 
 dotplot_gc_pf_l2l3_cellgexmarkers_ggplotobj <- data.frame(FeatureID = rownames(marker_gc_pf_gex), marker_gc_pf_gex) %>%
@@ -352,7 +355,9 @@ print(dotplot_gc_pf_l2l3_cellgexmarkers_ggplotobj)
 dev.off()
 ```
 
-### UMAP HC PM-GC PF colored by l4 
+### UMAP HC PM-CRC PM-GC PF colored by l4 
+
+Here we show the unsupervised clustering analysis using UMAP of PF-derived immune cells from HC, PM-CRC, and PM-GC patients colored by celltype.
 
 ```{r umap hc crcpmp gcpmp pf macrophages col_l4, fig.width=10.25, fig.height=3.75}
 umap_hc_crcpmp_gcpmp_pf_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpmp_gcpmp_pf_macrophages),
@@ -399,7 +404,9 @@ dev.off()
 
 ### Stackedbarplot PM-CRC PM-GC PF macrophages colored by l4
 
-```{r stackedbarplot crcpmp gcpmp pf macrophages col_l4, fig.width=3, fig.height=5}
+Here we show the stacked barplot of PF-derived macrophages colored by celltype from PM-CRC and PM-GC patients.
+
+```{r stackedbarplot hc crcpmp gcpmp pf macrophages col_l4, fig.width=3, fig.height=5}
 stackedbarplot_hc_crcpmp_gcpmp_pf_macrophages_coll4_ggplotobj <- seurat_hc_crcpmp_gcpmp_pf_macrophages@meta.data %>%
   dplyr::group_by(manual_l4, Group, .drop = T) %>% 
   dplyr::summarise(Ncells = n()) %>%
@@ -429,7 +436,9 @@ print(stackedbarplot_hc_crcpmp_gcpmp_pf_macrophages_coll4_ggplotobj)
 dev.off()
 ```
 
-### UMAP HC PM-GC PF macrophages colored by l4
+### UMAP HC PM-GC PM-CRC PF macrophages colored by l4
+
+Here we show the unsupervised clustering analysis using UMAP of PF-derived macrophages from HC, PM-CRC, and PM-GC patients colored by celltype.
 
 ```{r umap hc crcpmp gcpmp pf macrophages col_l4, fig.width=10.25, fig.height=3.75}
 umap_gcpmp_pf_macrophages_l4_ggplotobj <- data.frame(CB = colnames(seurat_hc_crcpmp_gcpmp_pf_macrophages),
@@ -490,5 +499,5 @@ seurat_gcpmp_tx_macrophages@meta.data %>%
                 Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
                 Ncellperc = Ncellprop*100,
                 Donor = gsub("^(pt[0-9]{2})_.+$", "\\1", SampleID)) %>%
-  readr::write_csv(file.path(figS6Dir, "crcpmp_tx_macrophages_l4rl2.csv"))
+  readr::write_csv(file.path(figS6Dir, "gcpmp_tx_macrophages_l4rl2.csv"))
 ```

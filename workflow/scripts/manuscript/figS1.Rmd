@@ -376,15 +376,15 @@ print(scatterplot_hc_pf_cellmarkers_pex_gex_overlapping_facetl1_ggplotobj)
 dev.off()
 ```
 
-Here we calculate the Pearson correlation coefficients between gene expression and protein expression per lineage. This data was added post-hoc to the visualization. 
+Here we calculate the Spearman correlation coefficients between gene expression and protein expression per lineage. This data was added post-hoc to the visualization. 
 
 ```{r pex gex overlapping hc pf correlation analysis}
 marker_gex_pex_mean %>%
   dplyr::filter(Mean_pex != 0,
                 Mean_gex != 0) %>%
   dplyr::group_by(Lineage) %>% 
-  do(tidy(cor.test(.$Mean_gex, .$Mean_pex, method = "pearson"))) %>%
-  write_delim(file.path(figS1Dir, "hc_pf_cellmarkers_pex_gex_overlapping_lm_pearson.csv"), delim = ",")
+  do(tidy(cor.test(.$Mean_gex, .$Mean_pex, method = "spearman", exact = F))) %>%
+  write_delim(file.path(figS1Dir, "hc_pf_cellmarkers_pex_gex_overlapping_lm_spearman.csv"), delim = ",")
 ```
 
 

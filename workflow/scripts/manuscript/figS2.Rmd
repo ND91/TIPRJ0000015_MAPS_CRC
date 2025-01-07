@@ -40,6 +40,7 @@ seurat_pbmc_pf_liver_colon_rds <- file.path(base_path, "output/q1_pf_characteriz
 
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
+pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.xlsx")
 ```
 
 ### Import data
@@ -423,4 +424,19 @@ stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj <- seurat_pbmc_pf_li
 pdf(file.path(figS2Dir, "stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2.pdf"), width = 5, height = 5)
 print(stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0_coll2_ggplotobj)
 dev.off()
+
+seurat_pbmc_pf_liver_colon@meta.data %>%
+  dplyr::group_by(manual_l2, Tissue, .drop = T) %>% 
+  dplyr::summarise(Ncells = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::complete(tidyr::nesting(Tissue), tidyr::nesting(manual_l2), fill = list(Ncells = 0)) %>%
+  dplyr::group_by(Tissue) %>%
+  dplyr::mutate(manual_l2 = factor(manual_l2, levels = celltype_order_l2$celltype),
+                Nsample = sum(Ncells),
+                Ncellprop = Ncells/Nsample,
+                Ncellprop = ifelse(is.na(Ncellprop), 0, Ncellprop),
+                Ncellperc = Ncellprop*100,
+                Tissue = factor(Tissue, levels = c("PBMC", "PF", "Colon", "Liver"))) %>%
+  dplyr::rename(Celltype = manual_l2) %>%
+  readr::write_csv(file.path(figS2Dir, "stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0.csv"))
 ```
