@@ -30,11 +30,12 @@ To reproduce the analyses, you will need to do the following:
 The way I approached this is to let the environment be created whereafter I activated it and manually installed the packages. Note that this must be redone anytime the environment is recreated for whatever reason.
 
 Important! The annotations of the macrophages in the code and the manuscript differ slightly:
+
 Code: Manuscript
-Macrophages VCAN+: mono-CMs
-Macrophages C1Q+: C1Q+ CMs 
-Macrophages SPP1+: SPP1+ CMs 
-Macrophages VCAN+C1Q+: C1Q+ mono-CMs
+- Macrophages VCAN+: mono-CMs
+- Macrophages C1Q+: C1Q+ CMs 
+- Macrophages SPP1+: SPP1+ CMs 
+- Macrophages VCAN+C1Q+: C1Q+ mono-CMs
 
 Once you have completed the previous downloading the snakemake pipeline, create the conda/mamba environment (For running snakemake it is advisable to use `mamba`) to stage the subsequent steps.
 
