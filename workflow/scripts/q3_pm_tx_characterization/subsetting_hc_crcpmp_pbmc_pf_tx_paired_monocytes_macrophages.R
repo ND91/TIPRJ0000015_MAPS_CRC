@@ -41,7 +41,11 @@ seuratObject <- SCTransform(seuratObject, conserve.memory = T)
 seuratObject <- RunPCA(object = seuratObject, npcs = 100, seed.use = 326126)
 seuratObject <- FindNeighbors(seuratObject, reduction = "pca", dims = 1:42)
 seuratObject <- FindClusters(seuratObject, resolution = 1, verbose = FALSE)
-seuratObject <- RunUMAP(seuratObject, dims = 1:42, seed.use = 123632)
+# seuratObject <- RunUMAP(seuratObject, dims = 1:42, seed.use = 123632)
+
+# Harmony batch effect correction for tissue
+seuratObject <- RunHarmony(seuratObject, "Tissue")
+seuratObject <- RunUMAP(seuratObject, dims = 1:46, seed.use = 7869243, reduction = "harmony")
 
 # Save data
 saveRDS(seuratObject, hc_crcpmp_pbmc_pf_tx_monocytes_macrophages_seurat_rds, compress = "gzip")

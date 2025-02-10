@@ -4,7 +4,7 @@ author: "Andrew Y.F. Li Yim"
 date: '2023-07-31'
 output: html_document
 ---
-
+  
 ```{r libraries, include=FALSE}
 library(Seurat)
 library(DESeq2)
@@ -38,6 +38,9 @@ seurat_hc_pf_macrophages_rds <- file.path(base_path, "output/q1_pf_characterizat
 sce_hc_pf_macrophages_trajectory_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_macrophages_trajectory_sce.Rds")
 seurat_pbmc_pf_liver_colon_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/pbmc_pf_liver_colon_SeuratObject.Rds")
 
+# Analyses
+pf_macrophages_markergenes_list_rds <- file.path(base_path, "output/q1_pf_characterization/analyses/hc_pf_macrophages_markergenes_list.Rds")
+
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
 pf_heatmap_order_xlsx <- file.path(base_path, "config/order/q1_pf_heatmap_order.xlsx")
@@ -57,6 +60,8 @@ seurat_pbmc_pf_liver_colon <- readRDS(seurat_pbmc_pf_liver_colon_rds)
 ```{r load marker genes}
 marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
   dplyr::filter(Assay == "RNA")
+
+pf_macrophages_markergenes_list <- readRDS(pf_macrophages_markergenes_list_rds)
 ```
 
 ### Output
@@ -101,6 +106,15 @@ celltype_order_pf_l4 <- readxl::read_excel(celltype_markers_xlsx, col_names = T)
   dplyr::select(celltype, color) %>%
   unique() %>%
   dplyr::filter(celltype %in% unique(seurat_hc_pf@meta.data[,"manual_l4"])) %>%
+  dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
+
+celltype_order_pf_l4_macrophages <- readxl::read_excel(celltype_markers_xlsx, col_names = T) %>%
+  dplyr::filter(level == "manual_l4",
+                modality == "gene") %>%
+  dplyr::select(celltype, color) %>%
+  unique() %>%
+  dplyr::filter(celltype %in% unique(seurat_hc_pf_macrophages@meta.data[,"manual_l4"])) %>%
+  unique() %>%
   dplyr::mutate(number_subset = paste0(1:nrow(.), ". ", celltype))
 ```
 
@@ -260,7 +274,7 @@ seurat_hc_pbmc_pf@meta.data %>%
 ### UMAP HC PF macrophages colored by monocyte-macrophage GEX markers
 
 Here we characterize the PF-derived CD163+ macrophages by superimposing the gene expression of the following genes on the respective UMAP configuration:
-- Monocytes/Monocyte-macrophages/Macrophages (CD14)
+  - Monocytes/Monocyte-macrophages/Macrophages (CD14)
 - Monocytes/Monocyte-macrophages/Macrophages (CCR2)
 - Peritoneal resident macrophages (TREM2)
 
@@ -312,7 +326,7 @@ dev.off()
 ### UMAP HC PF macrophages colored by monocyte-macrophage CITE markers
 
 Here we characterize the PF-derived CD163+ macrophages by superimposing the gene expression of the following genes on the respective UMAP configuration:
-- Monocytes/Monocyte-macrophages/Macrophages (CD14)
+  - Monocytes/Monocyte-macrophages/Macrophages (CD14)
 - Monocytes/Monocyte-macrophages/Macrophages (CD192)
 
 ```{r umap hc pf macrophages col_monomaccitemarkers, fig.width=6, fig.height=3}
@@ -439,4 +453,61 @@ seurat_pbmc_pf_liver_colon@meta.data %>%
                 Tissue = factor(Tissue, levels = c("PBMC", "PF", "Colon", "Liver"))) %>%
   dplyr::rename(Celltype = manual_l2) %>%
   readr::write_csv(file.path(figS2Dir, "stackedbarplot_hc_pbmc_pf_liver_colon_l2rl0.csv"))
+```
+
+### Dotplot GEX HC PF macrophages colored by l4
+
+Here we present a dotplot representing the percentage expressing cells and median expression of curated genes for the PF-derived macrophage subsets.
+
+```{r dotplot gex hc pf macrophages col_l4, fig.width=2, fig.height=12}
+pf_marker_genes_macrophages_unsupervised <- unique(do.call(c, lapply(celltype_order_pf_l4_macrophages$celltype, function(macrophage){
+  pf_macrophages_markergenes_list[[macrophage]] %>% 
+    dplyr::arrange(p_val) %>%
+    dplyr::slice_head(n = 10) %>%
+    dplyr::pull(gene)
+  })))
+
+pf_marker_gex_macrophages <- GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")[which(rownames(GetAssayData(seurat_hc_pf_macrophages, assay = "RNA")) %in% pf_marker_genes_macrophages_unsupervised), ]
+
+dotplot_hc_pf_macrophages_cellgexmarkers_ggplotobj <- data.frame(
+  FeatureID = rownames(pf_marker_gex_macrophages), pf_marker_gex_macrophages) %>%
+  tidyr::pivot_longer(-c(FeatureID), names_to = "CB", values_to = "nUMIs") %>%
+  dplyr::mutate(CB = stringr::str_replace(CB, "\\.", "-")) %>%
+  dplyr::inner_join(data.frame(CB = rownames(seurat_hc_pf_macrophages@meta.data), 
+                               Celltype = seurat_hc_pf_macrophages@meta.data[,"manual_l4"]), 
+                    by = "CB") %>%
+  dplyr::mutate(Celltype = factor(Celltype), 
+                FeatureID = factor(FeatureID)) %>%
+  dplyr::group_by(Celltype, FeatureID, .drop = F) %>%
+  dplyr::summarize(Median = median(log1p(nUMIs)),
+                   Percentage = mean(nUMIs>0)*100) %>%
+  dplyr::mutate(Median = ifelse(is.na(Median), 0, Median),
+                Percentage = ifelse(is.na(Percentage), 0, Percentage),
+                Celltype = factor(Celltype, rev(celltype_order_pf_l4_macrophages$celltype)),
+                FeatureID = factor(FeatureID, rev(pf_marker_genes_macrophages_unsupervised))) %>% 
+  ggplot(aes(x = FeatureID, y = Celltype, col = Median)) +
+  geom_tile(alpha = 0, col = "grey") +
+  geom_point(aes(size = Percentage)) +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.spacing.x=unit(0, "lines"))
+
+print(dotplot_hc_pf_macrophages_cellgexmarkers_ggplotobj)
+
+# pdf(file.path(figS2Dir, "dotplot_hc_pf_macrophages_cellgexmarkers.pdf"), width = 2, height = 12)
+pdf(file.path(figS2Dir, "dotplot_hc_pf_macrophages_cellgexmarkers.pdf"), width = 11, height = 2.5)
+print(dotplot_hc_pf_macrophages_cellgexmarkers_ggplotobj)
+dev.off()
+```
+
+```{r supplementary table gex hc pf macrophages col_l4}
+openxlsx::write.xlsx(macrophage_marker_list, file = file.path(figS1Dir, "macrophage_marker_list.xlsx"))
 ```

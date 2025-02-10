@@ -31,11 +31,11 @@ base_path <- "/mnt/smb/ltytgat/ayliyim/MI-group/ayliyim/projects/TIPRJ0000015_MA
 # Subsets
 seurat_hc_pbmc_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pbmc_pf_SeuratObject.Rds")
 seurat_hc_pf_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_SeuratObject.Rds")
+seurat_hc_pf_macrophages_rds <- file.path(base_path, "output/q1_pf_characterization/subsets/hc_pf_macrophages_SeuratObject.Rds")
 
 # Analyses
 tam_markers_xlsx <- file.path(base_path, "config/genes_of_interest/tams_ma_2022.xlsx")
 pf_l2l3_markerprotein_list_rds <- file.path(base_path, "output/q1_pf_characterization/analyses/hc_pf_manual_l2l3_markerproteins_list.Rds")
-pf_macrophages_marker_list_rds <- file.path(base_path, "output/q1_pf_characterization/analyses/hc_pf_macrophages_marker_list.Rds")
 
 # Plotting parameters
 celltype_markers_xlsx <- file.path(base_path, "config/order/celltype_markers.xlsx")
@@ -51,6 +51,7 @@ pf_macrophages_unsupervised_heatmap_order_xlsx <- file.path(base_path, "config/o
 ```{r load subsets}
 seurat_hc_pbmc_pf <- readRDS(seurat_hc_pbmc_pf_rds)
 seurat_hc_pf <- readRDS(seurat_hc_pf_rds)
+seurat_hc_pf_macrophages <- readRDS(seurat_hc_pf_macrophages_rds)
 ```
 
 ```{r load marker genes}
@@ -58,7 +59,6 @@ marker_genes <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
   dplyr::filter(Assay == "RNA")
 marker_proteins <- readxl::read_excel(pf_heatmap_order_xlsx) %>%
   dplyr::filter(Assay == "CITE")
-macrophage_marker_list <- readRDS(pf_macrophages_marker_list_rds)
 manual_l2l3_markerprotein_list <- readRDS(pf_l2l3_markerprotein_list_rds)
 
 pf_myeloid_markers <- readxl::read_excel(pf_myeloid_heatmap_order_xlsx)
@@ -143,8 +143,8 @@ seurat_hc_pf_l2l3@meta.data <- seurat_hc_pf_l2l3@meta.data %>%
 
 ```{r umap hc pbmc pf col_tissue split_tissue, fig.width=15, fig.height=7.5}
 umap_hc_pbmc_pf_coltissue_splittissue_ggplotobj <- data.frame(CB = colnames(seurat_hc_pbmc_pf),
-                                             Embeddings(seurat_hc_pbmc_pf[["umap"]]),
-                                             seurat_hc_pbmc_pf@meta.data) %>%
+                                                              Embeddings(seurat_hc_pbmc_pf[["umap"]]),
+                                                              seurat_hc_pbmc_pf@meta.data) %>%
   ggplot(aes(x = UMAP_1, y = UMAP_2)) +
   geom_point_rast(show.legend = T, size = 0.25, aes(col = Tissue)) +
   labs(y = "",
@@ -495,5 +495,3 @@ pdf(file.path(figS1Dir, "dotplot_hc_pf_l2l3_cellgexmarkers.pdf"), width = 7.5, h
 print(dotplot_hc_pf_l2l3_cellgexmarkers_ggplotobj)
 dev.off()
 ```
-
-
