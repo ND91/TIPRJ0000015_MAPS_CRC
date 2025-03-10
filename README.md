@@ -1,4 +1,4 @@
-In the following analysis we will perform the single-cell RNA-sequencing analyses as described in Saris et al. 2024. 
+In the following analysis we will perform the single-cell RNA-sequencing analyses as described in Saris et al. 2025. 
 
 The `workflow` folder contains all the code necessary to prepare and analyze the data. Within the `workflow` folder, we have the following folders:
 - `envs`: Conda/Mamba environments for running the scripts.
@@ -56,3 +56,5 @@ snakemake --cores 20 -p --use-conda --resources mem_mb=189000 --rerun-triggers m
 ```
 
 The aforementioned pipeline will generate more data than what was described in the manuscript (as is typical for scRNAseq analyses). After the necessary files are created, the scripts for generating the figures for the manuscript can be found in `workflow/scripts/manuscript` where each `.Rmd` file represents one of the main or supplementary figures. Note that some figures were generated in Graphpad Prism and that the final figures were assembled and edited for consistency purposes in Adobe Illustrator. The data generated for the reviewers can be found in `workflow/scripts/manuscript/review(1|2)` where each file corresponds to a point raised by the reviewers.
+
+[![DOI](https://zenodo.org/badge/778738617.svg)](https://doi.org/10.5281/zenodo.15000834)
